@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<title>HAVOC — Multi-Tool Generator</title>
+<style>
+:root{
+  --bg:#080808; --bg-2:#101010; --bg-3:#181818; --bg-4:#222;
+  --border:#2a1a1a; --border-2:#3d2222; --border-3:#522828;
+  --text:#fff; --text-dim:#999; --text-dimmer:#555;
+  --red:#ef4444; --red-light:#f87171; --red-dark:#b91c1c; --red-deep:#7f1d1d;
+  --red-glow:rgba(239,68,68,.40); --red-bg:rgba(239,68,68,.10); --red-bg-strong:rgba(239,68,68,.18);
+  --valid:#4ade80; --valid-bg:rgba(74,222,128,.10); --valid-glow:rgba(74,222,128,.40);
+  --invalid:#dc2626; --invalid-bg:rgba(220,38,38,.10); --invalid-glow:rgba(220,38,38,.40);
+  --checking:#fbbf24; --checking-glow:rgba(251,191,36,.40);
+  --blur-amount:0px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  background:var(--bg);color:var(--text);
+  font-family:'JetBrains Mono','Fira Code','SF Mono',Menlo,Consolas,monospace;
+  min-height:100vh;overflow-x:hidden;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+
+.orb{position:fixed;border-radius:50%;pointer-events:none;z-index:0;filter:blur(110px);opacity:.55}
+.orb-1{width:520px;height:520px;background:radial-gradient(circle,var(--red-glow),transparent 70%);top:-160px;left:-160px;animation:floatA 28s ease-in-out infinite}
+.orb-2{width:620px;height:620px;background:radial-gradient(circle,rgba(185,28,28,.20),transparent 70%);bottom:-200px;right:-200px;animation:floatB 35s ease-in-out infinite}
+.orb-3{width:420px;height:420px;background:radial-gradient(circle,rgba(248,113,113,.12),transparent 70%);top:40%;left:50%;animation:floatC 40s ease-in-out infinite}
+@keyframes floatA{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(140px,140px) scale(1.1)}}
+@keyframes floatB{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-160px,-160px) scale(1.15)}}
+@keyframes floatC{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-30%,-70%) scale(1.2)}}
+body::before{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(0,0,0,.6) 100%)}
+body::after{content:'';position:fixed;inset:0;z-index:1000;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(239,68,68,.03) 0 1px,transparent 1px 3px);opacity:.4;mix-blend-mode:overlay}
+
+.app{position:relative;z-index:2;display:grid;grid-template-columns:230px 1fr;gap:14px;max-width:1500px;margin:0 auto;padding:16px;min-height:100vh}
+
+.sidebar{background:linear-gradient(180deg,var(--bg-2),var(--bg));border:1px solid var(--border);border-radius:12px;padding:14px;position:sticky;top:14px;height:fit-content;display:flex;flex-direction:column;box-shadow:0 4px 30px rgba(0,0,0,.5),0 0 30px rgba(239,68,68,.05),inset 0 1px 0 rgba(239,68,68,.10)}
+.sidebar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--red),transparent)}
+
+.brand{display:flex;align-items:center;gap:9px;padding-bottom:10px;margin-bottom:9px;border-bottom:1px dashed var(--border)}
+.brand-icon{width:30px;height:30px;flex-shrink:0;filter:drop-shadow(0 0 8px var(--red-glow));animation:brandSpin 20s linear infinite}
+@keyframes brandSpin{to{transform:rotate(360deg)}}
+.brand-text{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.brand-name{font-size:13px;font-weight:800;letter-spacing:2.5px;background:linear-gradient(180deg,#fff 30%,#666);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.brand-sub{font-size:7.5px;color:var(--red);letter-spacing:1.8px;font-weight:700}
+.cursor{display:inline-block;width:6px;height:11px;background:var(--red);animation:blink 1.05s steps(1) infinite;margin-left:3px;vertical-align:middle;box-shadow:0 0 6px var(--red)}
+@keyframes blink{50%{opacity:0}}
+
+.nav{display:flex;flex-direction:column;gap:1px;flex:1}
+.nav-item{display:flex;align-items:center;gap:7px;padding:5px 9px;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--text-dim);cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:1px;transition:all .2s cubic-bezier(.2,.7,.3,1);text-align:left;width:100%;position:relative;overflow:hidden;min-height:26px}
+.nav-item:hover{background:rgba(239,68,68,.06);color:var(--text);border-color:var(--border)}
+.nav-item.active{background:linear-gradient(90deg,var(--red),var(--red-dark));color:#fff;font-weight:700;box-shadow:0 4px 16px var(--red-glow),inset 0 1px 0 rgba(255,255,255,.2)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 6px #fff}
+.nav-icon{width:14px;font-size:11px;text-align:center;font-family:monospace;font-weight:700;flex-shrink:0}
+.nav-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-count{font-size:8.5px;padding:1px 5px;background:rgba(255,255,255,.08);border-radius:6px;min-width:18px;text-align:center;color:var(--text-dim);font-weight:600}
+.nav-item.active .nav-count{background:rgba(0,0,0,.3);color:#fff}
+
+.sidebar-footer{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+.footer-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:1.2px;transition:all .2s;font-weight:600}
+.footer-btn:hover{background:rgba(239,68,68,.08);color:var(--text);border-color:var(--border-3)}
+.footer-btn .ico{font-size:13px;font-family:monospace;color:var(--red)}
+.status-pill{font-size:9.5px;color:var(--text-dim);letter-spacing:1.5px;padding:6px 11px;background:var(--bg-3);border:1px solid var(--border);border-radius:20px;display:flex;align-items:center;gap:6px;justify-content:center;font-weight:700}
+.status-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.4}}
+
+.main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{display:none;grid-template-columns:360px 1fr;gap:14px}
+.panel.active{display:grid}
+
+.config{background:linear-gradient(180deg,var(--bg-2),var(--bg));border:1px solid var(--border);border-radius:12px;padding:16px;height:fit-content;position:sticky;top:14px;box-shadow:0 4px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(239,68,68,.08)}
+.config::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--red),transparent)}
+.cfg-title{font-size:11px;letter-spacing:2px;color:var(--red);margin-bottom:14px;text-transform:uppercase;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px dashed var(--border);font-weight:700}
+.cfg-title::before{content:'>';color:var(--red);font-weight:700}
+.section{margin-bottom:14px}
+.section:last-of-type{margin-bottom:0}
+
+label{display:block;font-size:10px;color:var(--text-dim);margin-bottom:7px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+
+select,input[type="number"],input[type="text"],input[type="url"]{width:100%;padding:10px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:13px;transition:all .2s ease;appearance:none;-webkit-appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ef4444' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+select option{background:var(--bg-2);color:var(--text)}
+input:focus,select:focus{outline:none;border-color:var(--red);background:var(--bg);box-shadow:0 0 0 3px rgba(239,68,68,.15)}
+
+input[type="range"]{width:100%;-webkit-appearance:none;appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;background:radial-gradient(circle at 30% 30%,var(--red-light),var(--red-dark));border-radius:50%;cursor:pointer;transition:transform .2s,box-shadow .2s;box-shadow:0 0 0 0 var(--red-glow)}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);box-shadow:0 0 0 6px rgba(239,68,68,.2)}
+input[type="range"]::-moz-range-thumb{width:16px;height:16px;background:var(--red);border-radius:50%;cursor:pointer;border:none}
+
+.range-display{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-dim);margin-top:7px;letter-spacing:1px}
+.range-display span:nth-child(2){color:var(--red);font-weight:700;font-size:13px;padding:2px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:4px}
+
+.toggles{display:flex;flex-direction:column;gap:7px}
+.toggle{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s ease;user-select:none}
+.toggle:hover{border-color:var(--border-3)}
+.toggle.active{background:var(--bg);border-color:var(--red);box-shadow:0 0 10px rgba(239,68,68,.15)}
+.toggle-label{font-size:12.5px;letter-spacing:.5px}
+.toggle-switch{width:30px;height:17px;background:var(--border);border-radius:9px;position:relative;transition:background .25s}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;background:var(--text-dim);border-radius:50%;transition:all .25s cubic-bezier(.4,0,.2,1)}
+.toggle.active .toggle-switch{background:linear-gradient(90deg,var(--red),var(--red-dark))}
+.toggle.active .toggle-switch::after{background:#fff;left:15px;box-shadow:0 0 4px var(--red-glow)}
+
+.generate-btn{width:100%;padding:13px;background:linear-gradient(180deg,var(--red),var(--red-dark));color:#fff;border:none;border-radius:7px;font-family:inherit;font-size:13px;font-weight:700;letter-spacing:2.5px;cursor:pointer;transition:all .25s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden;margin-top:6px;box-shadow:0 4px 20px var(--red-glow),inset 0 1px 0 rgba(255,255,255,.2)}
+.generate-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px var(--red-glow),inset 0 1px 0 rgba(255,255,255,.3);background:linear-gradient(180deg,var(--red-light),var(--red))}
+.generate-btn:active{transform:translateY(0)}
+.generate-btn:disabled{opacity:.5;cursor:not-allowed;transform:none !important}
+.generate-btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);transition:left .7s ease}
+.generate-btn:hover::before{left:100%}
+.generate-btn .arrow{display:inline-block;margin-right:6px;transition:transform .2s}
+.generate-btn:hover .arrow{transform:translateX(3px)}
+
+.results-panel{background:linear-gradient(180deg,var(--bg-2),var(--bg));border:1px solid var(--border);border-radius:12px;padding:16px;min-height:540px;display:flex;flex-direction:column;box-shadow:0 4px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(239,68,68,.08);position:relative}
+.results-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--red),transparent)}
+.results-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;padding-bottom:12px;border-bottom:1px dashed var(--border)}
+.results-title{font-size:12px;letter-spacing:2px;display:flex;align-items:center;gap:8px;font-weight:700;color:var(--red)}
+.results-title::before{content:'$';color:var(--text-dim);font-weight:400}
+.results-count{font-size:10px;color:var(--text-dim);padding:3px 9px;background:var(--bg-3);border:1px solid var(--border);border-radius:10px;font-weight:400}
+.results-actions{display:flex;gap:5px;flex-wrap:wrap}
+.filter-btn,.action-btn{padding:6px 11px;background:var(--bg-3);border:1px solid var(--border);border-radius:5px;color:var(--text-dim);cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:1.2px;transition:all .2s ease;font-weight:600}
+.filter-btn:hover,.action-btn:hover{color:var(--text);border-color:var(--border-3);background:var(--bg-4)}
+.filter-btn.active{background:var(--red);color:#fff;border-color:var(--red);font-weight:700;box-shadow:0 0 8px var(--red-glow)}
+.action-btn.primary{background:transparent;color:var(--red);border-color:var(--red)}
+.action-btn.primary:hover{background:var(--red);color:#fff}
+.action-btn.danger{color:var(--red-light);border-color:rgba(248,113,113,.3)}
+.action-btn.danger:hover{background:var(--red);color:#fff;border-color:var(--red)}
+
+.results-list{flex:1;display:flex;flex-direction:column;gap:5px;max-height:640px;overflow-y:auto;padding-right:6px}
+.results-list::-webkit-scrollbar{width:6px}
+.results-list::-webkit-scrollbar-track{background:var(--bg-3);border-radius:3px}
+.results-list::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+.results-list::-webkit-scrollbar-thumb:hover{background:var(--red-dark)}
+
+.result-item{display:flex;align-items:center;gap:12px;padding:10px 13px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;font-size:13px;animation:slideIn .3s cubic-bezier(.2,.7,.3,1);transition:all .3s ease;position:relative;overflow:hidden}
+@keyframes slideIn{from{transform:translateX(-12px) scale(.98)}to{transform:translateX(0) scale(1)}}
+.result-item:hover{border-color:var(--border-3);background:var(--bg-4)}
+.result-item.valid{border-color:var(--valid);background:linear-gradient(90deg,var(--valid-bg) 0%,var(--bg-3) 50%);box-shadow:0 0 14px var(--valid-glow),inset 0 0 24px rgba(74,222,128,.05)}
+.result-item.valid::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--valid);box-shadow:0 0 8px var(--valid)}
+.result-item.invalid{border-color:var(--invalid);background:linear-gradient(90deg,var(--invalid-bg) 0%,var(--bg-3) 50%);box-shadow:0 0 14px var(--invalid-glow),inset 0 0 24px rgba(220,38,38,.05)}
+.result-item.invalid::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--invalid);box-shadow:0 0 8px var(--invalid)}
+
+.result-status{width:9px;height:9px;border-radius:50%;background:var(--text-dimmer);flex-shrink:0;transition:all .3s ease}
+.result-item.checking .result-status{background:var(--checking);animation:pulse 1s ease-in-out infinite;box-shadow:0 0 10px var(--checking)}
+.result-item.valid .result-status{background:var(--valid);box-shadow:0 0 10px var(--valid)}
+.result-item.invalid .result-status{background:var(--invalid);box-shadow:0 0 10px var(--invalid)}
+
+.result-value{flex:1;font-family:inherit;word-break:break-all;user-select:all;font-weight:500;line-height:1.5}
+.result-actions{display:flex;gap:4px;flex-shrink:0}
+.copy-btn{padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;font-family:inherit;font-size:9px;letter-spacing:1.2px;transition:all .2s ease}
+.copy-btn:hover{color:var(--red);border-color:var(--red)}
+.copy-btn.copied{background:var(--red);color:#fff;border-color:var(--red)}
+
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-dimmer);font-size:12px;padding:60px 20px;text-align:center;letter-spacing:1.5px}
+.empty-icon{font-size:44px;margin-bottom:14px;opacity:.4;font-family:monospace;letter-spacing:6px;color:var(--red)}
+.empty-text{line-height:1.8}
+.empty-text span{color:var(--text-dim);font-size:11px}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:2000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);animation:fadeIn .25s ease}
+.modal-overlay.open{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:linear-gradient(180deg,var(--bg-2),var(--bg));border:1px solid var(--border-2);border-radius:12px;padding:0;max-width:560px;width:100%;max-height:90vh;overflow:hidden;animation:scaleIn .3s cubic-bezier(.2,.7,.3,1);box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(239,68,68,.15);display:flex;flex-direction:column}
+@keyframes scaleIn{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--border);flex-shrink:0;background:linear-gradient(180deg,var(--bg-2),var(--bg))}
+.modal-title{font-size:13px;letter-spacing:2px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--red)}
+.modal-close{width:28px;height:28px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;font-family:inherit}
+.modal-close:hover{background:var(--red);color:#fff;border-color:var(--red);transform:rotate(90deg)}
+.modal-body{padding:18px 22px;overflow-y:auto;flex:1}
+.modal-body::-webkit-scrollbar{width:6px}
+.modal-body::-webkit-scrollbar-track{background:var(--bg-3)}
+.modal-body::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dimmer);letter-spacing:1px;line-height:1.7;flex-shrink:0;background:var(--bg-2)}
+
+.settings-section{margin-bottom:18px;padding-bottom:18px;border-bottom:1px dashed var(--border)}
+.settings-section:last-of-type{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.settings-section-title{font-size:11px;letter-spacing:2.5px;color:var(--red);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;text-transform:uppercase}
+.settings-section-title::before{content:'▸';color:var(--red)}
+.settings-hint{font-size:10px;color:var(--text-dim);margin-top:6px;letter-spacing:1px;line-height:1.6}
+
+.color-picker-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.color-picker-col label{margin-bottom:6px}
+input[type="color"]{-webkit-appearance:none;appearance:none;width:100%;height:38px;border:1px solid var(--border);border-radius:6px;background:var(--bg-3);cursor:pointer;padding:4px;transition:all .2s}
+input[type="color"]:hover{border-color:var(--red)}
+input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+input[type="color"]::-webkit-color-swatch{border:none;border-radius:4px}
+input[type="color"]::-moz-color-swatch{border:none;border-radius:4px}
+
+.reset-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--border-2);color:var(--text-dim);border-radius:6px;font-family:inherit;font-size:10px;letter-spacing:1.5px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:10px}
+.reset-btn:hover{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.06)}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--bg-2);border:1px solid var(--red);padding:11px 22px;border-radius:7px;font-size:12px;letter-spacing:1.5px;z-index:3000;opacity:0;transition:all .35s cubic-bezier(.2,.7,.3,1);box-shadow:0 8px 30px rgba(0,0,0,.6),0 0 20px var(--red-glow);font-weight:700;backdrop-filter:blur(10px);color:#fff}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:var(--valid);box-shadow:0 8px 30px rgba(74,222,128,.2)}
+.toast.error{border-color:var(--red-light);box-shadow:0 8px 30px rgba(248,113,113,.3)}
+
+.link-status{display:none;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;margin-bottom:14px;font-size:12px;letter-spacing:1px}
+.link-status.show{display:flex;animation:fadeUp .3s ease}
+.link-status.approved{border-color:var(--valid);background:linear-gradient(90deg,var(--valid-bg),transparent)}
+.link-status.denied{border-color:var(--invalid);background:linear-gradient(90deg,var(--invalid-bg),transparent)}
+.link-status-icon{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.link-status.checking .link-status-icon{background:var(--checking);animation:pulse 1s infinite}
+.link-status.approved .link-status-icon{background:var(--valid);box-shadow:0 0 8px var(--valid)}
+.link-status.denied .link-status-icon{background:var(--invalid);box-shadow:0 0 8px var(--invalid)}
+.check-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--red);color:var(--red);border-radius:6px;font-family:inherit;font-size:11px;letter-spacing:1.5px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:10px}
+.check-btn:hover{background:var(--red);color:#fff;box-shadow:0 0 16px var(--red-glow)}
+.check-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.pattern-preview{background:linear-gradient(90deg,var(--bg),var(--bg-3));border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:8px;font-size:15px;letter-spacing:3px;text-align:center;color:var(--red);word-break:break-all;font-weight:700;position:relative;overflow:hidden}
+.pattern-preview::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(239,68,68,.10),transparent);transform:translateX(-100%);animation:shimmer 3s infinite}
+@keyframes shimmer{50%{transform:translateX(100%)}}
+.pattern-hint{font-size:10px;color:var(--text-dim);margin-top:6px;letter-spacing:1px}
+.pattern-hint code{color:var(--red);background:var(--bg-3);padding:1px 5px;border-radius:3px;font-size:10px}
+
+.advanced-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;cursor:pointer;margin-top:14px;font-size:11px;letter-spacing:1.5px;font-weight:700;transition:all .2s;color:var(--text-dim)}
+.advanced-toggle:hover{border-color:var(--border-3);color:var(--red)}
+.advanced-toggle .chev{transition:transform .25s;font-family:monospace}
+.advanced-toggle.open .chev{transform:rotate(90deg)}
+.advanced-content{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.advanced-content.open{max-height:400px}
+.advanced-inner{padding-top:14px}
+
+body.privacy-mode [data-blur="name"]{filter:blur(var(--blur-amount));transition:filter .3s ease}
+body.privacy-mode [data-blur="description"]{filter:blur(var(--blur-amount));transition:filter .3s ease}
+body.privacy-mode [data-blur="results"] .result-value{filter:blur(var(--blur-amount));transition:filter .3s ease}
+body.privacy-mode [data-blur="results"] .ua-card-ua,
+body.privacy-mode [data-blur="results"] .ua-card-ip{filter:blur(var(--blur-amount));transition:filter .3s ease}
+[data-blur]{transition:filter .3s ease}
+
+/* ════════ USER AGENT ════════ */
+.ua-view-toggle{display:inline-flex;background:var(--bg-3);border:1px solid var(--border);border-radius:5px;padding:2px;gap:1px}
+.ua-view-toggle button{padding:6px 12px;background:transparent;border:none;border-radius:4px;color:var(--text-dim);cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:1.5px;font-weight:700;transition:all .2s ease;cursor:pointer}
+.ua-view-toggle button:hover{color:var(--text)}
+.ua-view-toggle button.active{background:linear-gradient(180deg,var(--red),var(--red-dark));color:#fff;box-shadow:0 0 10px var(--red-glow)}
+
+.ua-results-grid{display:grid !important;grid-template-columns:repeat(auto-fill,minmax(380px,1fr)) !important;gap:12px !important;max-height:70vh;overflow-y:auto;padding-right:6px;flex-direction:initial !important}
+.ua-results-grid::-webkit-scrollbar{width:6px}
+.ua-results-grid::-webkit-scrollbar-track{background:var(--bg-3);border-radius:3px}
+.ua-results-grid::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+.ua-results-grid::-webkit-scrollbar-thumb:hover{background:var(--red-dark)}
+
+.ua-card{background:linear-gradient(180deg,var(--bg-3),var(--bg-2));border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;box-shadow:0 0 0 1px rgba(239,68,68,.10),0 6px 20px rgba(239,68,68,.10),inset 0 1px 0 rgba(255,255,255,.02);transition:all .3s cubic-bezier(.2,.7,.3,1);animation:uaCardIn .45s cubic-bezier(.2,.7,.3,1);cursor:default}
+@keyframes uaCardIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.ua-card:hover{transform:translateY(-3px);box-shadow:0 0 0 1px rgba(239,68,68,.35),0 14px 40px rgba(239,68,68,.28),inset 0 1px 0 rgba(255,255,255,.05)}
+.ua-card::before{content:'';position:absolute;inset:0;border-radius:10px;padding:1px;background:linear-gradient(135deg,rgba(239,68,68,.85) 0%,rgba(239,68,68,0) 35%,rgba(239,68,68,0) 65%,rgba(239,68,68,.6) 100%);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.65;transition:opacity .3s}
+.ua-card:hover::before{opacity:1}
+.ua-card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(90deg,rgba(239,68,68,.14),rgba(239,68,68,0));border-bottom:1px dashed var(--border-2);position:relative;z-index:1}
+.ua-card-head-left{display:flex;align-items:center;gap:9px}
+.ua-card-icon{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red),0 0 16px rgba(239,68,68,.6);animation:pulse 2s ease-in-out infinite}
+.ua-card-label{font-size:10px;letter-spacing:2.5px;font-weight:800;color:var(--red);text-transform:uppercase}
+.ua-card-num{font-size:9.5px;color:var(--text-dimmer);letter-spacing:1.2px;font-family:'JetBrains Mono',monospace;font-weight:600}
+.ua-card-body{padding:14px;position:relative;z-index:1}
+.ua-card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.ua-tag{padding:3px 8px;background:var(--bg-4);border:1px solid var(--border);border-radius:4px;font-size:9px;letter-spacing:1.2px;color:var(--text-dim);font-weight:700;text-transform:uppercase}
+.ua-tag.primary{background:rgba(239,68,68,.14);border-color:var(--red);color:var(--red)}
+.ua-tag.glow{box-shadow:0 0 8px rgba(239,68,68,.35)}
+.ua-card-ua{font-family:'JetBrains Mono','Fira Code',monospace;font-size:11.5px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 11px;word-break:break-all;user-select:all;line-height:1.55;font-weight:500;max-height:120px;overflow-y:auto}
+.ua-card-ua::-webkit-scrollbar{width:4px}
+.ua-card-ua::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
+.ua-card-ip{margin-top:10px;padding:8px 12px;background:linear-gradient(90deg,rgba(239,68,68,.10),rgba(239,68,68,0));border:1px solid rgba(239,68,68,.3);border-left:3px solid var(--red);border-radius:4px;font-size:11.5px;color:var(--red);font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;user-select:all}
+.ua-card-ip::before{content:'IP';font-size:9px;letter-spacing:1.5px;background:var(--red);color:#fff;padding:2px 6px;border-radius:3px;font-weight:800}
+.ua-card-foot{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:rgba(0,0,0,.28);border-top:1px dashed var(--border-2);position:relative;z-index:1;gap:10px}
+.ua-card-id{font-size:9px;color:var(--text-dimmer);font-family:monospace;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.ua-card .copy-btn{padding:5px 11px;font-size:9px;letter-spacing:1.5px;font-weight:700}
+
+.ua-empty-grid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-dimmer);font-size:12px;padding:60px 20px;text-align:center;letter-spacing:1.5px;grid-column:1/-1}
+
+/* UA / API card check states */
+.ua-card.checking{/* default with red glow */}
+.ua-card.valid{border-color:var(--valid);box-shadow:0 0 0 1px rgba(74,222,128,.45),0 8px 28px rgba(74,222,128,.25),inset 0 1px 0 rgba(74,222,128,.05)}
+.ua-card.valid::before{background:linear-gradient(135deg,rgba(74,222,128,.85) 0%,rgba(74,222,128,0) 35%,rgba(74,222,128,0) 65%,rgba(74,222,128,.7) 100%);opacity:.85}
+.ua-card.valid .ua-card-icon{background:var(--valid);box-shadow:0 0 10px var(--valid),0 0 20px rgba(74,222,128,.7);animation:none}
+.ua-card.invalid{border-color:var(--invalid);box-shadow:0 0 0 1px rgba(220,38,38,.5),0 8px 28px rgba(220,38,38,.3),inset 0 1px 0 rgba(220,38,38,.05)}
+.ua-card.invalid::before{background:linear-gradient(135deg,rgba(220,38,38,.85) 0%,rgba(220,38,38,0) 35%,rgba(220,38,38,0) 65%,rgba(220,38,38,.7) 100%);opacity:.85}
+.ua-card.invalid .ua-card-icon{background:var(--invalid);box-shadow:0 0 10px var(--invalid),0 0 20px rgba(220,38,38,.7);animation:none}
+
+.ua-card-status{margin-top:9px;padding:7px 12px;border-radius:5px;font-size:10.5px;font-weight:800;letter-spacing:2px;text-align:center;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;gap:6px}
+.ua-card-status.checking{background:linear-gradient(90deg,rgba(251,191,36,.08),rgba(251,191,36,.15));border:1px solid rgba(251,191,36,.35);color:var(--checking);animation:pulse 1.4s ease-in-out infinite}
+.ua-card-status.valid{background:linear-gradient(90deg,rgba(74,222,128,.10),rgba(74,222,128,.18));border:1px solid rgba(74,222,128,.4);color:var(--valid);box-shadow:inset 0 0 12px rgba(74,222,128,.15)}
+.ua-card-status.invalid{background:linear-gradient(90deg,rgba(220,38,38,.10),rgba(220,38,38,.18));border:1px solid rgba(220,38,38,.4);color:var(--invalid);box-shadow:inset 0 0 12px rgba(220,38,38,.15)}
+
+.api-custom-hint{font-size:10px;color:var(--text-dim);margin-top:6px;letter-spacing:1px;line-height:1.5}
+
+.advanced-badge{display:inline-block;margin-left:8px;padding:3px 8px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.5);color:var(--checking);font-size:9.5px;letter-spacing:1px;font-weight:800;border-radius:4px;animation:pulse 2s ease-in-out infinite;vertical-align:middle}
+
+.api-card-extra{margin-top:6px;padding:6px 10px;background:var(--bg-3);border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.api-card-extra strong{color:var(--text);font-weight:600}
+.api-card-extra .api-card-label-key{font-size:9px;letter-spacing:1.5px;background:var(--bg);color:var(--text-dim);padding:2px 6px;border-radius:3px;font-weight:800;flex-shrink:0}
+
+@media (max-width:1000px){
+  .app{grid-template-columns:1fr;padding:12px;gap:10px}
+  .sidebar{position:static;padding:12px}
+  .brand{padding-bottom:12px;margin-bottom:10px}
+  .brand-icon{width:32px;height:32px}
+  .brand-name{font-size:14px;letter-spacing:2.5px}
+  .nav{flex-direction:row;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:4px;padding-bottom:4px}
+  .nav::-webkit-scrollbar{display:none}
+  .nav-item{flex:0 0 auto;padding:7px 12px;min-height:36px;gap:7px}
+  .nav-icon{font-size:12px;width:auto}
+  .sidebar-footer{flex-direction:row;margin-top:12px;padding-top:12px;flex-wrap:wrap;gap:8px}
+  .footer-btn,.status-pill{flex:1;min-width:120px;justify-content:center}
+  .panel{grid-template-columns:1fr}
+  .config{position:static;padding:14px}
+  .results-panel{min-height:420px;padding:14px}
+  .color-picker-row{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .app{padding:10px}
+  .brand-name{font-size:13px;letter-spacing:2px}
+  .results-list{max-height:480px}
+  .result-value{font-size:11px}
+  .copy-btn{padding:4px 8px;font-size:9px}
+  .generate-btn{font-size:12px;padding:12px}
+  .pattern-preview{font-size:13px;letter-spacing:2px}
+  .results-header{flex-direction:column;align-items:stretch}
+  .results-actions{justify-content:flex-start}
+  .filter-btn,.action-btn{font-size:9.5px;padding:5px 9px}
+  .modal{max-width:100%}
+}
+@media (max-width:380px){
+  .nav-item{padding:6px 10px;font-size:9.5px}
+  .nav-label{font-size:9px}
+  .color-picker-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fca5a5"/><stop offset="40%" stop-color="#ef4444"/><stop offset="100%" stop-color="#7f1d1d"/>
+          </linearGradient>
+          <linearGradient id="brand-grad-inner" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#991b1b"/>
+          </linearGradient>
+        </defs>
+        <path d="M20 2 L 38 20 L 20 38 L 2 20 Z" fill="url(#brand-grad)"/>
+        <path d="M20 8 L 32 20 L 20 32 L 8 20 Z" fill="#0a0a0a" stroke="#ef4444" stroke-width="0.5"/>
+        <path d="M20 13 L 27 20 L 20 27 L 13 20 Z" fill="url(#brand-grad-inner)"/>
+        <circle cx="20" cy="20" r="2" fill="#fff"/>
+      </svg>
+      <div class="brand-text">
+        <div class="brand-name"><span id="brand-name-text" data-blur="name">HAVOC</span><span class="cursor"></span></div>
+        <div class="brand-sub"><span id="brand-desc-text" data-blur="description">MULTI-TOOL GENERATOR</span></div>
+      </div>
+    </div>
+
+    <nav class="nav" id="mainNav">
+      <button class="nav-item active" data-tab="username"><span class="nav-icon">@</span><span class="nav-label">USERNAME</span><span class="nav-count" id="nav-un">0</span></button>
+      <button class="nav-item" data-tab="giftcard"><span class="nav-icon">$</span><span class="nav-label">GIFT CARD</span><span class="nav-count" id="nav-gc">0</span></button>
+      <button class="nav-item" data-tab="ip"><span class="nav-icon">⌬</span><span class="nav-label">IP ADDRESS</span><span class="nav-count" id="nav-ip">0</span></button>
+      <button class="nav-item" data-tab="proxy"><span class="nav-icon">⇄</span><span class="nav-label">PROXY</span><span class="nav-count" id="nav-pr">0</span></button>
+      <button class="nav-item" data-tab="hwid"><span class="nav-icon">◉</span><span class="nav-label">HWID</span><span class="nav-count" id="nav-hwid">0</span></button>
+      <button class="nav-item" data-tab="credit"><span class="nav-icon">#</span><span class="nav-label">CREDIT CARD</span><span class="nav-count" id="nav-cc">0</span></button>
+      <button class="nav-item" data-tab="uaagent"><span class="nav-icon">⌘</span><span class="nav-label">USER AGENT</span><span class="nav-count" id="nav-ua">0</span></button>
+      <button class="nav-item" data-tab="api"><span class="nav-icon">⌥</span><span class="nav-label">API KEYS</span><span class="nav-count" id="nav-api">0</span></button>
+      <button class="nav-item" data-tab="key"><span class="nav-icon">⚿</span><span class="nav-label">KEY BYPASS</span><span class="nav-count" id="nav-key">0</span></button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="footer-btn" id="settingsBtn"><span class="ico">⚙</span><span>SETTINGS</span></button>
+      <div class="status-pill">SYSTEM ACTIVE</div>
+    </div>
+  </aside>
+
+  <main class="main" id="mainContent">
+
+    <!-- USERNAME -->
+    <div class="panel active" id="username-panel">
+      <div class="config">
+        <div class="cfg-title">Username Configuration</div>
+        <div class="section"><label>Platform</label><select id="un-platform"><option value="discord">Discord</option><option value="github">GitHub</option><option value="youtube">YouTube</option><option value="roblox">Roblox</option><option value="minecraft">Minecraft</option></select></div>
+        <div class="section"><label>Length</label><input type="range" id="un-length" min="3" max="20" value="8"><div class="range-display"><span>3</span><span id="un-length-val">8</span><span>20</span></div></div>
+        <div class="section"><label>Character Set</label><div class="toggles">
+          <div class="toggle active" data-un-toggle="lowercase"><span class="toggle-label">lowercase [a-z]</span><div class="toggle-switch"></div></div>
+          <div class="toggle" data-un-toggle="uppercase"><span class="toggle-label">uppercase [A-Z]</span><div class="toggle-switch"></div></div>
+          <div class="toggle" data-un-toggle="numbers"><span class="toggle-label">numbers [0-9]</span><div class="toggle-switch"></div></div>
+        </div></div>
+        <div class="section"><label>Quantity (no limit)</label><input type="number" id="un-amount" min="1" value="10"></div>
+        <button class="generate-btn" id="un-generate"><span class="arrow">▸</span>GENERATE</button>
+      </div>
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="results-title"><span>RESULTS</span><span class="results-count" id="un-count">0</span></div>
+          <div class="results-actions">
+            <button class="filter-btn active" data-un-filter="all">ALL</button><button class="filter-btn" data-un-filter="unchecked">UNCHECKED</button><button class="filter-btn" data-un-filter="valid">VALID</button><button class="filter-btn" data-un-filter="invalid">INVALID</button>
+            <button class="action-btn primary" data-un-action="copy">COPY</button><button class="action-btn primary" data-un-action="save">SAVE .TXT</button><button class="action-btn danger" data-un-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="un-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO RESULTS YET<br><span>Configure parameters & generate</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- GIFT CARD -->
+    <div class="panel" id="giftcard-panel">
+      <div class="config">
+        <div class="cfg-title">Gift Card Configuration</div>
+        <div class="section"><label>Platform</label><select id="gc-platform">
+          <option value="fortnite">Fortnite</option><option value="roblox">Roblox</option><option value="valorant">Valorant</option><option value="xbox">Xbox</option><option value="playstation">PlayStation</option><option value="starbucks">Starbucks</option><option value="amazon">Amazon</option><option value="apple">Apple</option><option value="google">Google Play</option><option value="netflix">Netflix</option><option value="spotify">Spotify</option><option value="walmart">Walmart</option><option value="target">Target</option><option value="visa">Visa</option><option value="steam">Steam</option><option value="nintendo">Nintendo</option><option value="ebay">eBay</option><option value="bestbuy">Best Buy</option><option value="sephora">Sephora</option><option value="uber">Uber</option><option value="doordash">DoorDash</option><option value="nike">Nike</option>
+        </select></div>
+        <div class="section"><label>Amount (USD · step $5)</label><input type="range" id="gc-money" min="5" max="500" step="5" value="25"><div class="range-display"><span>$5</span><span id="gc-money-val">$25</span><span>$500</span></div></div>
+        <div class="section"><label>Quantity (no limit)</label><input type="number" id="gc-amount" min="1" value="10"></div>
+        <button class="generate-btn" id="gc-generate"><span class="arrow">▸</span>GENERATE</button>
+      </div>
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="results-title"><span>RESULTS</span><span class="results-count" id="gc-count">0</span></div>
+          <div class="results-actions">
+            <button class="filter-btn active" data-gc-filter="all">ALL</button><button class="filter-btn" data-gc-filter="unchecked">UNCHECKED</button><button class="filter-btn" data-gc-filter="valid">VALID</button><button class="filter-btn" data-gc-filter="invalid">INVALID</button>
+            <button class="action-btn primary" data-gc-action="copy">COPY</button><button class="action-btn primary" data-gc-action="save">SAVE .TXT</button><button class="action-btn danger" data-gc-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="gc-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO RESULTS YET<br><span>Configure parameters & generate</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- IP -->
+    <div class="panel" id="ip-panel">
+      <div class="config">
+        <div class="cfg-title">IP Configuration</div>
+        <div class="section"><label>Type</label><select id="ip-type"><option value="ipv4">IPv4</option><option value="ipv6">IPv6</option><option value="mixed">Mixed</option></select></div>
+        <div class="section"><label>Quantity (no limit)</label><input type="number" id="ip-amount" min="1" value="10"></div>
+        <button class="generate-btn" id="ip-generate"><span class="arrow">▸</span>GENERATE</button>
+      </div>
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="results-title"><span>RESULTS</span><span class="results-count" id="ip-count">0</span></div>
+          <div class="results-actions">
+            <button class="filter-btn active" data-ip-filter="all">ALL</button><button class="filter-btn" data-ip-filter="unchecked">UNCHECKED</button><button class="filter-btn" data-ip-filter="valid">VALID</button><button class="filter-btn" data-ip-filter="invalid">INVALID</button>
+            <button class="action-btn primary" data-ip-action="copy">COPY</button><button class="action-btn primary" data-ip-action="save">SAVE .TXT</button><button class="action-btn danger" data-ip-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="ip-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO RESULTS YET<br><span>Configure parameters & generate</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- PROXY -->
+    <div class="panel" id="proxy-panel">
+      <div class="config">
+        <div class="cfg-title">Proxy Configuration</div>
+        <div class="section"><label>Type</label><select id="pr-type"><option value="socks5">SOCKS5</option><option value="socks4">SOCKS4</option><option value="https">HTTPS</option><option value="mixed">Mixed</option></select></div>
+        <div class="section"><label>Quantity (no limit)</label><input type="number" id="pr-amount" min="1" value="10"></div>
+        <button class="generate-btn" id="pr-generate"><span class="arrow">▸</span>GENERATE</button>
+      </div>
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="results-title"><span>RESULTS</span><span class="results-count" id="pr-count">0</span></div>
+          <div class="results-actions">
+            <button class="filter-btn active" data-pr-filter="all">ALL</button><button class="filter-btn" data-pr-filter="unchecked">UNCHECKED</button><button class="filter-btn" data-pr-filter="valid">VALID</button><button class="filter-btn" data-pr-filter="invalid">INVALID</button>
+            <button class="action-btn primary" data-pr-action="copy">COPY</button><button class="action-btn primary" data-pr-action="save">SAVE .TXT</button><button class="action-btn danger" data-pr-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="pr-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO RESULTS YET<br><span>Configure parameters & generate</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- HWID -->
+    <div class="panel" id="hwid-panel">
+      <div class="config">
+        <div class="cfg-title">HWID Configuration</div>
+        <div class="section"><label>Format</label><select id="hwid-format"><option value="guid">Windows GUID</option><option value="uuid">UUID v4</option><option value="hex32">Hex (32 chars)</option><option value="hex64">Hex (64 chars)</option><option value="mixed">Mixed</option></select></div>
+        <div class="section"><label>Quantity (no limit)</label><input type="number" id="hwid-amount" min="1" value="10"></div>
+        <button class="generate-btn" id="hwid-generate"><span class="arrow">▸</span>GENERATE</button>
+      </div>
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="results-title"><span>RESULTS</span><span class="results-count" id="hwid-count">0</span></div>
+          <div class="results-actions">
+            <button class="filter-btn active" data-hwid-filter="all">ALL</button><button class="filter-btn" data-hwid-filter="unchecked">UNCHECKED</button><button class="filter-btn" data-hwid-filter="valid">VALID</button><button class="filter-btn" data-hwid-filter="invalid">INVALID</button>
+            <button class="action-btn primary" data-hwid-action="copy">COPY</button><button class="action-btn primary" data-hwid-action="save">SAVE .TXT</button><button class="action-btn danger" data-hwid-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="hwid-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO RESULTS YET<br><span>Configure parameters & generate</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- CREDIT CARD - BRAND NEW REBUILD -->
+    <div class="panel" id="credit-panel">
+      <div class="config">
+        <div class="cfg-title">Credit Card Configuration</div>
+        <div class="section">
+          <label>Brand</label>
+          <select id="cc-brand">
+            <option value="visa">VISA</option>
+            <option value="mastercard">MASTERCARD</option>
+            <option value="amex">AMERICAN EXPRESS</option>
+            <option value="discover">DISCOVER</option>
+            <option value="jcb">JCB</option>
+            <option value="diners">DINERS CLUB</option>
+            <option value="unionpay">UNIONPAY</option>
+            <option value="atm">ATM / DEBIT</option>
+            <option value="amazon">AMAZON</option>
+            <option value="walmart">WALMART</option>
+            <option value="target">TARGET</option>
+            <option value="bestbuy">BEST BUY</option>
+            <option value="starbucks">STARBUCKS</option>
+            <option value="apple">APPLE / ITUNES</option>
+            <option value="googleplay">GOOGLE PLAY</option>
+            <option value="steam">STEAM</option>
+            <option value="nintendo">NINTENDO</option>
+            <option value="playstation">PLAYSTATION</option>
+            <option value="xbox">XBOX</option>
+            <option value="netflix">NETFLIX</option>
+            <option value="spotify">SPOTIFY</option>
+            <option value="uber">UBER</option>
+            <option value="doordash">DOORDASH</option>
+            <option value="jbl">JBL</option>
+            <option value="oldnavy">OLD NAVY</option>
+            <option value="ebay">EBAY</option>
+            <option value="sephora">SEPHORA</option>
+            <option value="nike">NIKE</option>
+            <option value="mixed">▸ MIXED (random per item)</option>
+          </select>
+        </div>
+        <div class="section">
+          <label>CVV (leave empty for random)</label>
+          <input type="text" id="cc-cvv" placeholder="e.g. 123 or leave empty" maxlength="4" autocomplete="off">
+        </div>
+        <div class="section">
+          <label>Expiry Date (leave empty for random)</label>
+          <input type="text" id="cc-exp" placeholder="e.g. 12/27 or leave empty" maxlength="5" autocomplete="off">
+        </div>
+        <div class="section">
+          <label>Quantity (no limit)</label>
+          <input type="number" id="cc-amount" min="1" value="10">
+        </div>
+        <button class="generate-btn" id="cc-generate"><span class="arrow">▸</span>GENERATE</button>
+      </div>
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="results-title"><span>RESULTS</span><span class="results-count" id="cc-count">0</span></div>
+          <div class="results-actions">
+            <button class="filter-btn active" data-cc-filter="all">ALL</button><button class="filter-btn" data-cc-filter="unchecked">UNCHECKED</button><button class="filter-btn" data-cc-filter="valid">VALID</button><button class="filter-btn" data-cc-filter="invalid">INVALID</button>
+            <button class="action-btn primary" data-cc-action="copy">COPY</button><button class="action-btn primary" data-cc-action="save">SAVE .TXT</button><button class="action-btn danger" data-cc-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="cc-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO RESULTS YET<br><span>Pick a brand, set CVV &amp; EXP (or leave empty), then generate</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- USER AGENT -->
+    <div class="panel" id="uaagent-panel">
+      <div class="config">
+        <div class="cfg-title">User Agent Configuration</div>
+        <div class="section"><label>Platform</label><select id="ua-platform">
+          <option value="mixed">▸ MIXED (random per item)</option>
+          <option value="windows">Windows</option>
+          <option value="mac">Mac</option>
+          <option value="linux">Linux</option>
+          <option value="android">Android</option>
+          <option value="ios">iOS</option>
+          <option value="bot">Bot</option>
+        </select></div>
+        <div class="section"><label>Browser</label><select id="ua-browser">
+          <option value="chrome">Chrome</option>
+          <option value="edge">Microsoft Edge</option>
+          <option value="firefox">Firefox</option>
+          <option value="brave">Brave</option>
+          <option value="safari">Safari</option>
+          <option value="opera">Opera</option>
+          <option value="samsung">Samsung Internet</option>
+          <option value="uc">UC Browser</option>
+          <option value="yandex">Yandex Browser</option>
+          <option value="unknown">Unknown / Generic</option>
+        </select></div>
+        <div class="section"><div class="toggle" data-ua-ip-toggle><span class="toggle-label">Include IP Address</span><div class="toggle-switch"></div></div></div>
+        <div class="section" id="ua-ip-type-section" style="display:none"><label>IP Type</label><select id="ua-ip-type"><option value="ipv4">IPv4</option><option value="ipv6">IPv6</option><option value="mixed">Mixed</option></select></div>
+        <div class="section"><label>Quantity (no limit)</label><input type="number" id="ua-amount" min="1" value="10"></div>
+        <button class="generate-btn" id="ua-generate"><span class="arrow">▸</span>GENERATE</button>
+      </div>
+      <div class="results-panel" data-blur="results">
+        <div class="results-header">
+          <div class="results-title"><span>USER AGENTS</span><span class="results-count" id="ua-count">0</span></div>
+          <div class="results-actions">
+            <div class="ua-view-toggle">
+              <button class="active" data-ua-view="cards">▦ CARDS</button>
+              <button data-ua-view="text">≡ TEXT</button>
+            </div>
+            <button class="action-btn primary" data-ua-action="copy">COPY</button>
+            <button class="action-btn primary" data-ua-action="save">SAVE .TXT</button>
+            <button class="action-btn danger" data-ua-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="ua-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO USER AGENTS YET<br><span>Configure &amp; generate</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- API GENERATOR -->
+    <div class="panel" id="api-panel">
+      <div class="config">
+        <div class="cfg-title">API Key Configuration</div>
+        <div class="section"><label>Type <span id="api-advanced-badge" class="advanced-badge" style="display:none">! Advanced settings needed</span></label><select id="api-type">
+          <option value="stripe">Stripe</option>
+          <option value="openai">OpenAI</option>
+          <option value="github">GitHub</option>
+          <option value="aws">AWS Access Key</option>
+          <option value="google">Google API</option>
+          <option value="slack">Slack Token</option>
+          <option value="discord">Discord Bot Token</option>
+          <option value="discord-user">Discord User Token</option>
+          <option value="shopify">Shopify</option>
+          <option value="twilio">Twilio</option>
+          <option value="mailgun">Mailgun</option>
+          <option value="sendgrid">SendGrid</option>
+          <option value="digitalocean">DigitalOcean</option>
+          <option value="heroku">Heroku</option>
+          <option value="mapbox">Mapbox</option>
+          <option value="cloudflare">Cloudflare</option>
+          <option value="firebase">Firebase</option>
+          <option value="paypal">PayPal</option>
+          <option value="square">Square</option>
+          <option value="razorpay">Razorpay</option>
+          <option value="telegram">Telegram Bot</option>
+          <option value="custom">▸ CUSTOM (set your own)</option>
+        </select></div>
+        <div class="section"><label>Category</label><select id="api-category">
+          <option value="ai">AI API</option>
+          <option value="cloud">Cloud Services</option>
+          <option value="database">Database</option>
+          <option value="auth">Authentication</option>
+          <option value="payment">Payment</option>
+          <option value="communication">Communication</option>
+        </select></div>
+
+        <div id="api-custom-section" style="display:none">
+          <div class="section"><label>Prefix</label><input type="text" id="api-prefix" placeholder="e.g. sk_live_" maxlength="32"></div>
+          <div class="section"><label>Suffix (optional)</label><input type="text" id="api-suffix" placeholder="leave empty for none" maxlength="32"></div>
+          <div class="section"><label>Character Set</label><input type="text" id="api-charset" value="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" maxlength="200"><div class="api-custom-hint">Characters used to fill the random portion of the key</div></div>
+          <div class="section"><label>Website Link</label><input type="url" id="api-link" placeholder="https://example.com/api"><button class="check-btn" id="api-link-check">▸ CHECK LINK</button></div>
+          <div id="api-link-status" class="link-status"><div class="link-status-icon"></div><span id="api-link-msg">Checking link...</span></div>
+        </div>
+
+        <div class="section"><label>Quantity (no limit)</label><input type="number" id="api-amount" min="1" value="10"></div>
+        <button class="generate-btn" id="api-generate"><span class="arrow">▸</span>GENERATE</button>
+      </div>
+      <div class="results-panel" data-blur="results">
+        <div class="results-header">
+          <div class="results-title"><span>API KEYS</span><span class="results-count" id="api-count">0</span></div>
+          <div class="results-actions">
+            <div class="ua-view-toggle">
+              <button class="active" data-api-view="cards">▦ CARDS</button>
+              <button data-api-view="text">≡ TEXT</button>
+            </div>
+            <button class="action-btn primary" data-api-action="copy">COPY</button>
+            <button class="action-btn primary" data-api-action="save">SAVE .TXT</button>
+            <button class="action-btn danger" data-api-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="api-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO API KEYS YET<br><span>Configure &amp; generate</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- KEY BYPASSER -->
+    <div class="panel" id="key-panel">
+      <div class="config">
+        <div class="cfg-title">Key Bypass Configuration</div>
+        <div class="section"><label>Key System Link</label><input type="url" id="key-link" placeholder="https://example.com/key-system"><button class="check-btn" id="key-check">▸ CHECK LINK</button></div>
+        <div id="key-link-status" class="link-status"><div class="link-status-icon"></div><span id="key-link-msg">Checking link...</span></div>
+        <div class="section" id="key-gen-section" style="opacity:.4;pointer-events:none">
+          <label>Key Length</label><input type="range" id="key-length" min="4" max="32" value="16"><div class="range-display"><span>4</span><span id="key-length-val">16</span><span>32</span></div>
+          <label style="margin-top:14px">Character Set</label><div class="toggles">
+            <div class="toggle active" data-key-toggle="lowercase"><span class="toggle-label">lowercase [a-z]</span><div class="toggle-switch"></div></div>
+            <div class="toggle" data-key-toggle="uppercase"><span class="toggle-label">uppercase [A-Z]</span><div class="toggle-switch"></div></div>
+            <div class="toggle" data-key-toggle="numbers"><span class="toggle-label">numbers [0-9]</span><div class="toggle-switch"></div></div>
+            <div class="toggle" data-key-toggle="custom"><span class="toggle-label">custom charset</span><div class="toggle-switch"></div></div>
+          </div>
+          <div id="key-custom-wrap" style="display:none;margin-top:8px"><input type="text" id="key-custom" placeholder="e.g. ABCDEF123456" maxlength="64"><div style="font-size:10px;color:var(--text-dim);margin-top:6px;letter-spacing:1px">Select chars used for # in pattern</div></div>
+          <label style="margin-top:14px">Pattern</label><input type="text" id="key-pattern" value="####-####-####-####" maxlength="64">
+          <div class="pattern-hint">Use <code>#</code> for random chars · e.g. <code>KEY-####-####</code></div>
+          <div class="pattern-preview" id="key-preview">A7K2-X9P3-M4Q8-B6N1</div>
+          <div class="advanced-toggle" id="advanced-toggle"><span>▸ ADVANCED (prefix / suffix)</span><span class="chev">›</span></div>
+          <div class="advanced-content" id="advanced-content"><div class="advanced-inner">
+            <label>Prefix (optional)</label><input type="text" id="key-prefix" placeholder="e.g. FREE-" maxlength="16">
+            <label style="margin-top:10px">Suffix (optional)</label><input type="text" id="key-suffix" placeholder="e.g. -2025" maxlength="16">
+          </div></div>
+          <label style="margin-top:14px">Quantity (no limit)</label><input type="number" id="key-amount" min="1" value="10">
+          <button class="generate-btn" id="key-generate"><span class="arrow">▸</span>GENERATE</button>
+        </div>
+      </div>
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="results-title"><span>RESULTS</span><span class="results-count" id="key-count">0</span></div>
+          <div class="results-actions">
+            <button class="filter-btn active" data-key-filter="all">ALL</button>
+            <button class="action-btn primary" data-key-action="copy">COPY</button><button class="action-btn primary" data-key-action="save">SAVE .TXT</button><button class="action-btn danger" data-key-action="clear">CLEAR</button>
+          </div>
+        </div>
+        <div class="results-list" id="key-results"><div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO RESULTS YET<br><span>Check link & generate</span></div></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙ SETTINGS</div>
+      <button class="modal-close" id="closeSettings">×</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <div class="settings-section-title">Theme Editor</div>
+        <label>Generator Name</label><input type="text" id="theme-name" maxlength="20" value="HAVOC">
+        <label style="margin-top:12px">Description</label><input type="text" id="theme-description" maxlength="40" value="MULTI-TOOL GENERATOR">
+        <label style="margin-top:14px">Colors</label>
+        <div class="color-picker-row">
+          <div class="color-picker-col"><label>Primary (BG)</label><input type="color" id="theme-bg" value="#080808"></div>
+          <div class="color-picker-col"><label>Accent</label><input type="color" id="theme-accent" value="#ef4444"></div>
+        </div>
+        <div class="settings-hint">Shades auto-generated from base colors. Changes apply live.</div>
+        <button class="reset-btn" id="theme-reset">▸ RESET THEME TO DEFAULTS</button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Privacy Mode</div>
+        <div class="toggle" data-setting="privacy-enabled"><span class="toggle-label">Enable Privacy Mode</span><div class="toggle-switch"></div></div>
+        <div class="settings-hint">When enabled, the targets below are blurred according to your settings.</div>
+        <label style="margin-top:14px">Blur Intensity</label>
+        <input type="range" id="blur-amount" min="1" max="20" value="6">
+        <div class="range-display"><span>1px</span><span id="blur-amount-val">6px</span><span>20px</span></div>
+        <label style="margin-top:14px">What to Blur</label>
+        <div class="toggles">
+          <div class="toggle active" data-privacy-target="name"><span class="toggle-label">Generator Name</span><div class="toggle-switch"></div></div>
+          <div class="toggle active" data-privacy-target="description"><span class="toggle-label">Description</span><div class="toggle-switch"></div></div>
+          <div class="toggle active" data-privacy-target="results"><span class="toggle-label">Valid / Invalid Results</span><div class="toggle-switch"></div></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Generator</div>
+        <label>Valid Chance</label>
+        <input type="range" id="valid-chance" min="0" max="100" value="20">
+        <div class="range-display"><span>0%</span><span id="valid-chance-val">20%</span><span>100%</span></div>
+        <div class="settings-hint">Probability an item is marked valid.</div>
+        <label style="margin-top:14px">Check Speed</label>
+        <select id="check-speed"><option value="instant">Instant</option><option value="fast">Fast</option><option value="normal" selected>Normal</option><option value="slow">Slow</option></select>
+        <label style="margin-top:12px">Generation Speed</label>
+        <select id="gen-speed"><option value="instant">Instant</option><option value="fast">Fast</option><option value="normal" selected>Normal</option></select>
+        <div class="toggles" style="margin-top:14px">
+          <div class="toggle active" data-setting="scanlines"><span class="toggle-label">Scanline Effect</span><div class="toggle-switch"></div></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Data</div>
+        <button class="reset-btn" id="clearAll" style="border-color:rgba(220,38,38,.4);color:var(--red-light)">▸ CLEAR ALL STORED DATA</button>
+        <div class="settings-hint">Removes all results and preferences from your browser.</div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <div>► All outputs are randomly generated client-side</div>
+      <div>► Settings & results saved to your browser only</div>
+      <div>► For demonstration & testing purposes only</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════ STATE & STORAGE ════════ */
+const STORAGE_KEY = 'havoc_state_v5';
+const DEFAULTS = {
+  validChance: 20, checkSpeed: 'normal', genSpeed: 'normal', scanlines: true,
+  theme: { name: 'HAVOC', description: 'MULTI-TOOL GENERATOR', bgColor: '#080808', accentColor: '#ef4444' },
+  privacy: { enabled: false, blurAmount: 6, blurName: true, blurDescription: true, blurResults: true }
+};
+
+const settings = JSON.parse(JSON.stringify(DEFAULTS));
+const state = {
+  username: { results: [], filter: 'all' },
+  giftcard: { results: [], filter: 'all' },
+  ip:       { results: [], filter: 'all' },
+  proxy:    { results: [], filter: 'all' },
+  hwid:     { results: [], filter: 'all' },
+  credit:   { results: [], filter: 'all' },
+  uaagent:  { results: [], filter: 'all', view: 'cards' },
+  api:      { results: [], filter: 'all', view: 'cards', linkApproved: false },
+  key:      { results: [], filter: 'all', linkApproved: false, linkApprovedLink: '' }
+};
+
+const CHARS = { lower:'abcdefghijklmnopqrstuvwxyz', upper:'ABCDEFGHIJKLMNOPQRSTUVWXYZ', num:'0123456789', alnum:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' };
+const SPEEDS = { instant:{gen:3,check:20}, fast:{gen:25,check:70}, normal:{gen:55,check:170}, slow:{gen:110,check:320} };
+const KEY_MAP = { username:'un', giftcard:'gc', ip:'ip', proxy:'pr', hwid:'hwid', credit:'cc', uaagent:'ua', api:'api', key:'key' };
+
+function saveState(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({settings,state})); }catch(e){} }
+let saveTimer;
+function saveStateDebounced(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 250); }
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    if(data.settings){
+      Object.assign(settings, data.settings);
+      if(data.settings.theme) Object.assign(settings.theme, data.settings.theme);
+      if(data.settings.privacy) Object.assign(settings.privacy, data.settings.privacy);
+    }
+    if(data.state){
+      Object.keys(data.state).forEach(k => {
+        if(state[k]){
+          state[k].results = data.state[k].results || [];
+          state[k].filter = data.state[k].filter || 'all';
+          if('linkApproved' in data.state[k]) state[k].linkApproved = data.state[k].linkApproved;
+          if('linkApprovedLink' in data.state[k]) state[k].linkApprovedLink = data.state[k].linkApprovedLink || '';
+        }
+      });
+    }
+  }catch(e){}
+}
+
+/* ════════ COLOR HELPERS ════════ */
+function hexToRgb(hex){hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');const n=parseInt(hex,16);return{r:(n>>16)&255,g:(n>>8)&255,b:n&255}}
+function rgbToHex(r,g,b){return'#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}
+function shadeHex(hex,p){const c=hexToRgb(hex);const amt=Math.round(2.55*p);return rgbToHex(Math.max(0,Math.min(255,c.r+amt)),Math.max(0,Math.min(255,c.g+amt)),Math.max(0,Math.min(255,c.b+amt)))}
+function hexToRgba(hex,a){const{r,g,b}=hexToRgb(hex);return`rgba(${r},${g},${b},${a})`}
+
+function applyTheme(){
+  const root = document.documentElement.style;
+  const bg = settings.theme.bgColor;
+  const accent = settings.theme.accentColor;
+  root.setProperty('--bg', bg);
+  root.setProperty('--bg-2', shadeHex(bg, 6));
+  root.setProperty('--bg-3', shadeHex(bg, 14));
+  root.setProperty('--bg-4', shadeHex(bg, 24));
+  root.setProperty('--border', shadeHex(bg, 20));
+  root.setProperty('--border-2', shadeHex(bg, 35));
+  root.setProperty('--border-3', hexToRgba(accent, 0.25));
+  root.setProperty('--red', accent);
+  root.setProperty('--red-light', shadeHex(accent, 15));
+  root.setProperty('--red-dark', shadeHex(accent, -25));
+  root.setProperty('--red-deep', shadeHex(accent, -50));
+  root.setProperty('--red-glow', hexToRgba(accent, 0.40));
+  root.setProperty('--red-bg', hexToRgba(accent, 0.10));
+  root.setProperty('--red-bg-strong', hexToRgba(accent, 0.18));
+  const grads = document.querySelectorAll('#brand-grad stop, #brand-grad-inner stop');
+  if(grads[0]) grads[0].setAttribute('stop-color', shadeHex(accent, 20));
+  if(grads[1]) grads[1].setAttribute('stop-color', accent);
+  if(grads[2]) grads[2].setAttribute('stop-color', shadeHex(accent, -50));
+  $('#brand-name-text').textContent = settings.theme.name;
+  $('#brand-desc-text').textContent = settings.theme.description;
+  document.title = settings.theme.name + ' — Multi-Tool Generator';
+}
+function applyPrivacy(){
+  document.documentElement.style.setProperty('--blur-amount', settings.privacy.blurAmount + 'px');
+  document.body.classList.toggle('privacy-mode', settings.privacy.enabled);
+}
+
+/* ════════ HELPERS ════════ */
+const $ = s => {
+  if(typeof s !== 'string') return null;
+  if(s[0] === '#') return document.querySelector(s);
+  if(s[0] === '.' || s.includes(' ') || s.includes('[') || s.includes(':')) return document.querySelector(s);
+  return document.getElementById(s);
+};
+const $$ = s => {
+  if(typeof s !== 'string') return [];
+  if(s[0] === '#' || s[0] === '.' || s.includes(' ') || s.includes('[') || s.includes(':')) return document.querySelectorAll(s);
+  return document.querySelectorAll('#' + s);
+};
+const rnd = a => a[Math.floor(Math.random()*a.length)];
+const randInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pickChar = s => s[Math.floor(Math.random()*s.length)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function showToast(msg, type=''){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function genFromPattern(p,c){return p.replace(/#/g, () => pickChar(c))}
+function randomString(charset, length){return Array.from({length}, () => pickChar(charset)).join('')}
+function isValid(){return Math.random()*100 < settings.validChance}
+
+function getShortId(k){return KEY_MAP[k] !== undefined ? KEY_MAP[k] : k}
+function getListEl(k){return $('#' + getShortId(k) + '-results')}
+function getCountEl(k){return $('#' + getShortId(k) + '-count')}
+function getNavCountEl(k){return $('#nav-' + getShortId(k))}
+
+function createResultElement(item){
+  const div = document.createElement('div');
+  div.className = 'result-item ' + (item.status==='checking' ? 'checking' : item.status);
+  div.dataset.id = item.id;
+  div.dataset.status = item.status;
+  const valHtml = item.html !== undefined ? item.html : escapeHtml(item.value);
+  div.innerHTML = `<div class="result-status"></div><div class="result-value">${valHtml}</div><div class="result-actions"><button class="copy-btn" data-copy="${escapeHtml(item.value)}">COPY</button></div>`;
+  return div;
+}
+
+function updateCounts(){
+  Object.keys(state).forEach(k => {
+    const n = state[k].results.length;
+    const el = getCountEl(k);
+    const navEl = getNavCountEl(k);
+    if(el) el.textContent = n;
+    if(navEl) navEl.textContent = n;
+  });
+}
+
+function renderResults(key){
+  const listEl = getListEl(key);
+  if(!listEl) return;
+  listEl.className = 'results-list'; // reset any modifier classes (e.g. ua-results-grid)
+  const filter = state[key].filter;
+  const items = state[key].results.filter(r => {
+    if(filter==='all') return true;
+    if(filter==='unchecked') return r.status==='checking';
+    return r.status===filter;
+  });
+  listEl.innerHTML = '';
+  if(items.length===0 && state[key].results.length===0){
+    listEl.innerHTML = `<div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO RESULTS YET<br><span>Configure parameters & generate</span></div></div>`;
+    return;
+  }
+  if(items.length===0){
+    const label = filter==='unchecked' ? 'UNCHECKED' : filter.toUpperCase();
+    listEl.innerHTML = `<div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO ${label} ITEMS<br><span>Try a different filter</span></div></div>`;
+    return;
+  }
+  items.forEach(item => listEl.appendChild(createResultElement(item)));
+}
+function rerenderAll(){Object.keys(state).forEach(renderResults);updateCounts()}
+
+async function smoothAddItems(generatorKey, items){
+  const listEl = getListEl(generatorKey);
+  if(!listEl) return;
+  const empty = listEl.querySelector('.empty');
+  if(empty) empty.remove();
+  const speed = SPEEDS[settings.genSpeed].gen;
+  for(const item of items){
+    state[generatorKey].results.push(item);
+    listEl.appendChild(createResultElement(item));
+    updateCounts();
+    saveStateDebounced();
+    if(speed > 0) await sleep(speed);
+  }
+  renderResults(generatorKey);
+}
+async function checkAllItems(generatorKey){
+  const speed = SPEEDS[settings.checkSpeed].check;
+  const items = state[generatorKey].results.filter(i => i.status==='checking');
+  const listEl = getListEl(generatorKey);
+  if(!listEl) return;
+  for(const item of items){
+    await sleep(speed + Math.random()*speed*0.4);
+    item.status = isValid() ? 'valid' : 'invalid';
+    const el = listEl.querySelector(`[data-id="${item.id}"]`);
+    if(el){el.classList.remove('checking');el.classList.add(item.status);}
+    saveStateDebounced();
+  }
+  renderResults(generatorKey);
+  updateCounts();
+}
+
+function copyToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(() => showToast('✓ COPIED TO CLIPBOARD', 'success'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');showToast('✓ COPIED','success');}catch{showToast('✗ COPY FAILED','error');}
+    document.body.removeChild(ta);
+  }
+}
+function saveAsTxt(key){
+  const items = state[key].results;
+  if(!items.length) return showToast('NO RESULTS TO SAVE','error');
+  const filter = state[key].filter;
+  const visible = items.filter(r => {
+    if(filter==='all') return true;
+    if(filter==='unchecked') return r.status==='checking';
+    return r.status===filter;
+  });
+  if(!visible.length) return showToast('NO VISIBLE ITEMS','error');
+  const data = visible.map(r => r.value).join('\n');
+  const blob = new Blob([data], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  a.download = `havoc_${key}_${stamp}.txt`;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`✓ SAVED ${visible.length} ITEMS`,'success');
+}
+function copyAll(key){
+  const items = state[key].results;
+  if(!items.length) return showToast('NO RESULTS TO COPY','error');
+  const filter = state[key].filter;
+  const visible = items.filter(r => {
+    if(filter==='all') return true;
+    if(filter==='unchecked') return r.status==='checking';
+    return r.status===filter;
+  });
+  if(!visible.length) return showToast('NO VISIBLE ITEMS','error');
+  copyToClipboard(visible.map(r => r.value).join('\n'));
+}
+function clearResults(key){
+  state[key].results = [];
+  renderResults(key);
+  updateCounts();
+  saveState();
+  showToast('✓ RESULTS CLEARED','success');
+}
+
+/* ════════ TABS ════════ */
+function switchTab(tabId){
+  $$('.nav-item').forEach(t => t.classList.remove('active'));
+  $$('.panel').forEach(p => p.classList.remove('active'));
+  const tab = $(`[data-tab="${tabId}"]`);
+  if(tab) tab.classList.add('active');
+  const panel = $(tabId + '-panel');
+  if(!panel) return;
+  panel.classList.add('active');
+  if(state[tabId] && Array.isArray(state[tabId].results)) renderResults(tabId);
+  updateCounts();
+}
+$$('.nav-item').forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
+
+/* ════════ SETTINGS ════════ */
+$('#settingsBtn').addEventListener('click', () => $('#settingsModal').classList.add('open'));
+$('#closeSettings').addEventListener('click', () => $('#settingsModal').classList.remove('open'));
+$('#settingsModal').addEventListener('click', e => {if(e.target.id==='settingsModal')$('#settingsModal').classList.remove('open')});
+
+/* ════════ THEME EDITOR ════════ */
+$('#theme-name').addEventListener('input', e => {settings.theme.name = e.target.value || DEFAULTS.theme.name; applyTheme(); saveState();});
+$('#theme-description').addEventListener('input', e => {settings.theme.description = e.target.value || DEFAULTS.theme.description; applyTheme(); saveState();});
+$('#theme-bg').addEventListener('input', e => {settings.theme.bgColor = e.target.value; applyTheme(); saveStateDebounced();});
+$('#theme-accent').addEventListener('input', e => {settings.theme.accentColor = e.target.value; applyTheme(); saveStateDebounced();});
+$('#theme-reset').addEventListener('click', () => {
+  Object.assign(settings.theme, JSON.parse(JSON.stringify(DEFAULTS.theme)));
+  $('#theme-name').value = settings.theme.name;
+  $('#theme-description').value = settings.theme.description;
+  $('#theme-bg').value = settings.theme.bgColor;
+  $('#theme-accent').value = settings.theme.accentColor;
+  applyTheme(); saveState();
+  showToast('✓ THEME RESET','success');
+});
+
+/* ════════ PRIVACY MODE ════════ */
+$('[data-setting="privacy-enabled"]').addEventListener('click', function(){this.classList.toggle('active');settings.privacy.enabled=this.classList.contains('active');applyPrivacy();saveState();});
+$('#blur-amount').addEventListener('input', e => {settings.privacy.blurAmount = parseInt(e.target.value); $('#blur-amount-val').textContent = settings.privacy.blurAmount + 'px'; applyPrivacy(); saveStateDebounced();});
+$$('[data-privacy-target]').forEach(t => t.addEventListener('click', () => {
+  t.classList.toggle('active');
+  const key = 'blur' + t.dataset.privacyTarget.charAt(0).toUpperCase() + t.dataset.privacyTarget.slice(1);
+  settings.privacy[key] = t.classList.contains('active');
+  saveState();
+}));
+
+/* ════════ GENERATOR SETTINGS ════════ */
+$('#valid-chance').addEventListener('input', e => {settings.validChance = parseInt(e.target.value); $('#valid-chance-val').textContent = settings.validChance + '%'; saveState();});
+$('#check-speed').addEventListener('change', e => {settings.checkSpeed = e.target.value; saveState();});
+$('#gen-speed').addEventListener('change', e => {settings.genSpeed = e.target.value; saveState();});
+$('[data-setting="scanlines"]').addEventListener('click', function(){this.classList.toggle('active');settings.scanlines=this.classList.contains('active');document.body.style.setProperty('--scanline-opacity',settings.scanlines?'1':'0');saveState();});
+
+$('#clearAll').addEventListener('click', () => {
+  if(!confirm('Clear ALL stored data? This cannot be undone.')) return;
+  Object.assign(settings, JSON.parse(JSON.stringify(DEFAULTS)));
+  Object.keys(state).forEach(k => {state[k].results = []; if(state[k].linkApproved !== undefined){state[k].linkApproved = false; state[k].linkApprovedLink = '';}});
+  localStorage.removeItem(STORAGE_KEY);
+  rerenderAll();
+  $('#theme-name').value = settings.theme.name;
+  $('#theme-description').value = settings.theme.description;
+  $('#theme-bg').value = settings.theme.bgColor;
+  $('#theme-accent').value = settings.theme.accentColor;
+  $('#valid-chance').value = settings.validChance;
+  $('#valid-chance-val').textContent = settings.validChance + '%';
+  $('#check-speed').value = settings.checkSpeed;
+  $('#gen-speed').value = settings.genSpeed;
+  $('[data-setting="scanlines"]').classList.toggle('active', settings.scanlines);
+  $('[data-setting="privacy-enabled"]').classList.toggle('active', settings.privacy.enabled);
+  $('#blur-amount').value = settings.privacy.blurAmount;
+  $('#blur-amount-val').textContent = settings.privacy.blurAmount + 'px';
+  $$('[data-privacy-target]').forEach(t => {
+    const k = 'blur' + t.dataset.privacyTarget.charAt(0).toUpperCase() + t.dataset.privacyTarget.slice(1);
+    t.classList.toggle('active', settings.privacy[k]);
+  });
+  applyTheme();
+  applyPrivacy();
+  showToast('✓ ALL DATA CLEARED','success');
+  $('#settingsModal').classList.remove('open');
+});
+
+/* ════════ USERNAME ════════ */
+const unToggles = {lowercase:true, uppercase:false, numbers:false};
+$$('[data-un-toggle]').forEach(t => t.addEventListener('click', () => {t.classList.toggle('active');unToggles[t.dataset.unToggle]=t.classList.contains('active');}));
+$('#un-length').addEventListener('input', e => $('#un-length-val').textContent = e.target.value);
+function generateUsernameValue(){
+  let c='';
+  if(unToggles.lowercase) c+=CHARS.lower;
+  if(unToggles.uppercase) c+=CHARS.upper;
+  if(unToggles.numbers) c+=CHARS.num;
+  if(!c) c=CHARS.lower;
+  return Array.from({length:parseInt($('#un-length').value)}, () => pickChar(c)).join('');
+}
+$('#un-generate').addEventListener('click', async () => {
+  const amount = Math.max(1, parseInt($('#un-amount').value) || 1);
+  state.username.results = [];
+  renderResults('username'); updateCounts();
+  const items = Array.from({length:amount}, () => ({id:'u_'+Date.now()+'_'+Math.random().toString(36).slice(2,8), value:generateUsernameValue(), status:'checking'}));
+  const btn = $('#un-generate'); btn.disabled=true; btn.innerHTML='GENERATING...';
+  await smoothAddItems('username', items);
+  await checkAllItems('username');
+  btn.disabled=false; btn.innerHTML='<span class="arrow">▸</span>GENERATE';
+});
+$$('[data-un-filter]').forEach(b => b.addEventListener('click', () => {$$('[data-un-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.username.filter=b.dataset.unFilter;renderResults('username');}));
+$('[data-un-action="copy"]').addEventListener('click', () => copyAll('username'));
+$('[data-un-action="save"]').addEventListener('click', () => saveAsTxt('username'));
+$('[data-un-action="clear"]').addEventListener('click', () => clearResults('username'));
+
+/* ════════ GIFT CARD ════════ */
+$('#gc-money').addEventListener('input', e => $('#gc-money-val').textContent = '$'+e.target.value);
+function generateGiftCardValue(){
+  const seg = () => Array.from({length:4}, () => pickChar(CHARS.alnum)).join('');
+  return `${seg()}-${seg()}-${seg()}-${seg()}`;
+}
+$('#gc-generate').addEventListener('click', async () => {
+  const amount = Math.max(1, parseInt($('#gc-amount').value) || 1);
+  state.giftcard.results = [];
+  renderResults('giftcard'); updateCounts();
+  const items = Array.from({length:amount}, () => ({id:'g_'+Date.now()+'_'+Math.random().toString(36).slice(2,8), value:generateGiftCardValue(), status:'checking'}));
+  const btn = $('#gc-generate'); btn.disabled=true; btn.innerHTML='GENERATING...';
+  await smoothAddItems('giftcard', items);
+  await checkAllItems('giftcard');
+  btn.disabled=false; btn.innerHTML='<span class="arrow">▸</span>GENERATE';
+});
+$$('[data-gc-filter]').forEach(b => b.addEventListener('click', () => {$$('[data-gc-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.giftcard.filter=b.dataset.gcFilter;renderResults('giftcard');}));
+$('[data-gc-action="copy"]').addEventListener('click', () => copyAll('giftcard'));
+$('[data-gc-action="save"]').addEventListener('click', () => saveAsTxt('giftcard'));
+$('[data-gc-action="clear"]').addEventListener('click', () => clearResults('giftcard'));
+
+/* ════════ IP ════════ */
+function generateIP(type){
+  if(type==='ipv4') return Array.from({length:4}, () => randInt(0,255)).join('.');
+  if(type==='ipv6') return Array.from({length:8}, () => randInt(0,65535).toString(16).padStart(4,'0')).join(':');
+  return Math.random() > 0.5 ? generateIP('ipv4') : generateIP('ipv6');
+}
+$('#ip-generate').addEventListener('click', async () => {
+  const type = $('#ip-type').value;
+  const amount = Math.max(1, parseInt($('#ip-amount').value) || 1);
+  state.ip.results = [];
+  renderResults('ip'); updateCounts();
+  const items = Array.from({length:amount}, () => ({id:'i_'+Date.now()+'_'+Math.random().toString(36).slice(2,8), value:generateIP(type), status:'checking'}));
+  const btn = $('#ip-generate'); btn.disabled=true; btn.innerHTML='GENERATING...';
+  await smoothAddItems('ip', items);
+  await checkAllItems('ip');
+  btn.disabled=false; btn.innerHTML='<span class="arrow">▸</span>GENERATE';
+});
+$$('[data-ip-filter]').forEach(b => b.addEventListener('click', () => {$$('[data-ip-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.ip.filter=b.dataset.ipFilter;renderResults('ip');}));
+$('[data-ip-action="copy"]').addEventListener('click', () => copyAll('ip'));
+$('[data-ip-action="save"]').addEventListener('click', () => saveAsTxt('ip'));
+$('[data-ip-action="clear"]').addEventListener('click', () => clearResults('ip'));
+
+/* ════════ PROXY ════════ */
+function generateProxy(type){
+  const ip = Array.from({length:4}, () => randInt(0,255)).join('.');
+  const port = randInt(1,65535);
+  let t = type;
+  if(t==='mixed') t = rnd(['SOCKS5','SOCKS4','HTTPS']);
+  else t = t==='socks5' ? 'SOCKS5' : t==='socks4' ? 'SOCKS4' : 'HTTPS';
+  return `${ip}:${port} • ${t}`;
+}
+$('#pr-generate').addEventListener('click', async () => {
+  const type = $('#pr-type').value;
+  const amount = Math.max(1, parseInt($('#pr-amount').value) || 1);
+  state.proxy.results = [];
+  renderResults('proxy'); updateCounts();
+  const items = Array.from({length:amount}, () => ({id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2,8), value:generateProxy(type), status:'checking'}));
+  const btn = $('#pr-generate'); btn.disabled=true; btn.innerHTML='GENERATING...';
+  await smoothAddItems('proxy', items);
+  await checkAllItems('proxy');
+  btn.disabled=false; btn.innerHTML='<span class="arrow">▸</span>GENERATE';
+});
+$$('[data-pr-filter]').forEach(b => b.addEventListener('click', () => {$$('[data-pr-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.proxy.filter=b.dataset.prFilter;renderResults('proxy');}));
+$('[data-pr-action="copy"]').addEventListener('click', () => copyAll('proxy'));
+$('[data-pr-action="save"]').addEventListener('click', () => saveAsTxt('proxy'));
+$('[data-pr-action="clear"]').addEventListener('click', () => clearResults('proxy'));
+
+/* ════════ HWID ════════ */
+const HWID_FORMATS = {
+  guid(){const hex='0123456789ABCDEF';const segs=[8,4,4,4,12];let out='';segs.forEach((len,i)=>{for(let j=0;j<len;j++)out+=hex[Math.floor(Math.random()*16)];if(i<segs.length-1)out+='-';});return'{'+out+'}'},
+  uuid(){const hex='0123456789abcdef';let out='';for(let i=0;i<32;i++){let ch;if(i===12)ch='4';else if(i===16)ch=hex[8+Math.floor(Math.random()*4)];else ch=hex[Math.floor(Math.random()*16)];out+=ch;if(i===7||i===11||i===15||i===19)out+='-';}return out},
+  hex32(){const hex='0123456789ABCDEF';return Array.from({length:32}, () => hex[Math.floor(Math.random()*16)]).join('')},
+  hex64(){const hex='0123456789ABCDEF';return Array.from({length:64}, () => hex[Math.floor(Math.random()*16)]).join('')},
+  mixed(){return HWID_FORMATS[rnd(['guid','uuid','hex32','hex64'])]()}
+};
+$('#hwid-generate').addEventListener('click', async () => {
+  const format = $('#hwid-format').value;
+  const amount = Math.max(1, parseInt($('#hwid-amount').value) || 1);
+  state.hwid.results = [];
+  renderResults('hwid'); updateCounts();
+  const items = Array.from({length:amount}, () => ({id:'h_'+Date.now()+'_'+Math.random().toString(36).slice(2,8), value:HWID_FORMATS[format](), status:'checking'}));
+  const btn = $('#hwid-generate'); btn.disabled=true; btn.innerHTML='GENERATING...';
+  await smoothAddItems('hwid', items);
+  await checkAllItems('hwid');
+  btn.disabled=false; btn.innerHTML='<span class="arrow">▸</span>GENERATE';
+});
+$$('[data-hwid-filter]').forEach(b => b.addEventListener('click', () => {$$('[data-hwid-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.hwid.filter=b.dataset.hwidFilter;renderResults('hwid');}));
+$('[data-hwid-action="copy"]').addEventListener('click', () => copyAll('hwid'));
+$('[data-hwid-action="save"]').addEventListener('click', () => saveAsTxt('hwid'));
+$('[data-hwid-action="clear"]').addEventListener('click', () => clearResults('hwid'));
+
+/* ════════ CREDIT CARD — BRAND NEW REBUILD ════════ */
+// Luhn checksum for real credit cards
+function luhnCheckDigit(digits){
+  let sum=0, alt=true;
+  for(let i=digits.length-1;i>=0;i--){
+    let n=parseInt(digits[i],10);
+    if(alt){n*=2;if(n>9)n-=9;}
+    sum+=n;
+    alt=!alt;
+  }
+  return (10-(sum%10))%10;
+}
+
+// Real credit card brands (Luhn-valid numbers, proper BIN prefixes)
+const CC_BRANDS = {
+  visa:        {type:'credit', bin:'4',          length:16},
+  mastercard:  {type:'credit', bin:'5',          binNext:[1,2,3,4,5], length:16},
+  amex:        {type:'credit', bin:'3',          binNext:[4,7], length:15},
+  discover:    {type:'credit', bin:'6011',       length:16},
+  jcb:         {type:'credit', bin:'35',         length:16},
+  diners:      {type:'credit', bin:'36',         length:14},
+  unionpay:    {type:'credit', bin:'62',         length:16}
+};
+
+// Gift / store / debit card brands (alphanumeric codes)
+const GC_BRANDS = {
+  atm:         {type:'gift', pattern:'####-####-####-####'},
+  amazon:      {type:'gift', pattern:'####-####-####'},
+  walmart:     {type:'gift', pattern:'####-####-####-####'},
+  target:      {type:'gift', pattern:'####-####-####'},
+  bestbuy:     {type:'gift', pattern:'####-####-####'},
+  starbucks:   {type:'gift', pattern:'####-####-####-####'},
+  apple:       {type:'gift', pattern:'####-####-####'},
+  googleplay:  {type:'gift', pattern:'####-####-####'},
+  steam:       {type:'gift', pattern:'#####-#####-#####'},
+  nintendo:    {type:'gift', pattern:'####-####-####-####'},
+  playstation: {type:'gift', pattern:'####-####-####-####'},
+  xbox:        {type:'gift', pattern:'####-####-####-####'},
+  netflix:     {type:'gift', pattern:'####-####-####-####'},
+  spotify:     {type:'gift', pattern:'################'},
+  uber:        {type:'gift', pattern:'################'},
+  doordash:    {type:'gift', pattern:'####-####-####-####'},
+  jbl:         {type:'gift', pattern:'####-####-####-####'},
+  oldnavy:     {type:'gift', pattern:'####-####-####-####'},
+  ebay:        {type:'gift', pattern:'####-####-####-####'},
+  sephora:     {type:'gift', pattern:'####-####-####-####'},
+  nike:        {type:'gift', pattern:'####-####-####-####'}
+};
+
+const ALL_BRANDS = {...CC_BRANDS, ...GC_BRANDS};
+
+function generateCardNumber(brand){
+  const cfg = ALL_BRANDS[brand];
+  if(!cfg) return '0000-0000-0000-0000';
+  if(cfg.type === 'credit'){
+    let bin = cfg.bin;
+    if(cfg.binNext) bin += rnd(cfg.binNext).toString();
+    let digits = bin;
+    while(digits.length < cfg.length - 1) digits += randInt(0,9);
+    digits += luhnCheckDigit(digits);
+    // Format with spaces (4-4-4-4 for 16, 4-6-5 for Amex, 4-6-4 for Diners)
+    if(cfg.length === 15) return digits.slice(0,4)+' '+digits.slice(4,10)+' '+digits.slice(10);
+    if(cfg.length === 14) return digits.slice(0,4)+' '+digits.slice(4,10)+' '+digits.slice(10);
+    return digits.slice(0,4)+' '+digits.slice(4,8)+' '+digits.slice(8,12)+' '+digits.slice(12);
+  }
+  // Gift card: fill pattern with random digits
+  const charset = CHARS.num;
+  return cfg.pattern.replace(/#/g, () => pickChar(charset));
+}
+
+function generateCVV(){
+  return String(randInt(100,999));
+}
+function generateExpiry(){
+  const mm = String(randInt(1,12)).padStart(2,'0');
+  const yy = String(randInt(25,32)).padStart(2,'0');
+  return mm + '/' + yy;
+}
+
+$('#cc-generate').addEventListener('click', async () => {
+  try {
+    const brandSel = $('#cc-brand');
+    if(!brandSel) return showToast('⚠ BRAND SELECT NOT FOUND','error');
+    const brand = brandSel.value;
+    const cvvInput = $('#cc-cvv');
+    const expInput = $('#cc-exp');
+    const amountInput = $('#cc-amount');
+    if(!amountInput) return showToast('⚠ AMOUNT INPUT NOT FOUND','error');
+    const amount = Math.max(1, parseInt(amountInput.value) || 1);
+    const fixedCvv = cvvInput ? cvvInput.value.trim() : '';
+    const fixedExp = expInput ? expInput.value.trim() : '';
+
+    state.credit.results = [];
+    renderResults('credit');
+    updateCounts();
+
+    const items = [];
+    for(let i = 0; i < amount; i++){
+      const actualBrand = brand === 'mixed' ? rnd(Object.keys(ALL_BRANDS)) : brand;
+      const number = generateCardNumber(actualBrand);
+      const cvv = fixedCvv || generateCVV();
+      const exp = fixedExp || generateExpiry();
+      const value = `${number} | CVV ${cvv} | EXP ${exp}`;
+      const html = `${escapeHtml(number).replace(/ /g, '&nbsp;')} <span style="color:var(--text-dim);font-size:11px">| CVV</span> <span style="color:var(--text);font-weight:700">${escapeHtml(cvv)}</span> <span style="color:var(--text-dim);font-size:11px">| EXP</span> <span style="color:var(--text);font-weight:700">${escapeHtml(exp)}</span>`;
+      items.push({
+        id:'cc_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,8),
+        value, html, status:'checking'
+      });
+    }
+
+    const btn = $('#cc-generate');
+    if(btn){btn.disabled=true; btn.innerHTML='GENERATING...';}
+    await smoothAddItems('credit', items);
+    await checkAllItems('credit');
+    if(btn){btn.disabled=false; btn.innerHTML='<span class="arrow">▸</span>GENERATE';}
+  } catch(err){
+    console.error('Credit card generate error:', err);
+    showToast('⚠ ERROR: ' + err.message, 'error');
+    const btn = $('#cc-generate');
+    if(btn){btn.disabled=false; btn.innerHTML='<span class="arrow">▸</span>GENERATE';}
+  }
+});
+$$('[data-cc-filter]').forEach(b => b.addEventListener('click', () => {$$('[data-cc-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.credit.filter=b.dataset.ccFilter;renderResults('credit');}));
+$('[data-cc-action="copy"]').addEventListener('click', () => copyAll('credit'));
+$('[data-cc-action="save"]').addEventListener('click', () => saveAsTxt('credit'));
+$('[data-cc-action="clear"]').addEventListener('click', () => clearResults('credit'));
+
+/* ════════ USER AGENT ════════ */
+const ANDROID_DEVICES = ['SM-G960F','SM-G973F','SM-A515F','SM-N986U','Pixel 6','Pixel 7','Pixel 8','HUAWEI P30 Pro','Xiaomi Mi 11','OnePlus 9','Moto G Power','LG G8 ThinQ'];
+
+const UA_TEMPLATES = {
+  chrome: {
+    windows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36',
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36',
+    linux: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36',
+    android: 'Mozilla/5.0 (Linux; Android {androidVer}; {device}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Mobile Safari/537.36',
+    ios: 'Mozilla/5.0 (iPhone; CPU iPhone OS {iosVer}_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/{ver}.0 Mobile/15E148 Safari/604.1'
+  },
+  edge: {
+    windows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36 Edg/{ver}.0',
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36 Edg/{ver}.0'
+  },
+  firefox: {
+    windows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:{ver}.0) Gecko/20100101 Firefox/{ver}.0',
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:{ver}.0) Gecko/20100101 Firefox/{ver}.0',
+    linux: 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:{ver}.0) Gecko/20100101 Firefox/{ver}.0',
+    android: 'Mozilla/5.0 (Android {androidVer}; {device}; rv:{ver}.0) Gecko/{ver}.0 Firefox/{ver}.0',
+    ios: 'Mozilla/5.0 (iPhone; CPU iPhone OS {iosVer}_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/{ver}.0 Mobile/15E148 Safari/605.1.15'
+  },
+  brave: {
+    windows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36 Brave/{ver}',
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36 Brave/{ver}'
+  },
+  safari: {
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{ver} Safari/605.1.15',
+    ios: 'Mozilla/5.0 (iPhone; CPU iPhone OS {iosVer} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{ver} Mobile/15E148 Safari/604.1'
+  },
+  opera: {
+    windows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36 OPR/{ver}.0.0.0',
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36 OPR/{ver}.0.0.0',
+    linux: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36 OPR/{ver}.0.0.0',
+    android: 'Mozilla/5.0 (Linux; Android {androidVer}; {device}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36 OPR/{ver}.0.0.0'
+  },
+  samsung: {
+    android: 'Mozilla/5.0 (Linux; Android {androidVer}; {device}) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/{ver} Chrome/{ver} Mobile Safari/537.36'
+  },
+  uc: {
+    android: 'Mozilla/5.0 (Linux; U; Android {androidVer}; en-US) AppleWebKit/537.36 (KHTML, like Gecko) Version/{ver} Chrome/{ver} Safari/537.36 UCBrowser/{ver}.0',
+    ios: 'iPhone; CPU iPhone OS {iosVer} like Mac OS X; U; en_US) AppleWebKit/537.36 (KHTML, like Gecko) Version/{ver} UCBrowser/{ver}.0'
+  },
+  yandex: {
+    windows: 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} YaBrowser/{ver} Safari/537.36',
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} YaBrowser/{ver} Safari/537.36',
+    android: 'Mozilla/5.0 (Linux; Android {androidVer}; {device}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} YaBrowser/{ver} Safari/537.36'
+  },
+  unknown: {
+    windows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/{ver}.0',
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{ver} Safari/605.1.15',
+    linux: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Safari/537.36',
+    android: 'Mozilla/5.0 (Linux; Android {androidVer}; {device}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{ver} Mobile Safari/537.36',
+    ios: 'Mozilla/5.0 (iPhone; CPU iPhone OS {iosVer} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{ver} Mobile/15E148 Safari/604.1'
+  }
+};
+
+const BOT_USER_AGENTS = [
+  {name:'Googlebot', ua:'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'},
+  {name:'Bingbot', ua:'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)'},
+  {name:'Yahoo Slurp', ua:'Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/yearch/slurp)'},
+  {name:'DuckDuckBot', ua:'Mozilla/5.0 (compatible; DuckDuckGo-Https/1.1; https://duckduckgo.com/duckduckbot.html)'},
+  {name:'YandexBot', ua:'Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)'},
+  {name:'Applebot', ua:'Mozilla/5.0 (compatible; Applebot/0.1; +http://www.apple.com/go/applebot)'},
+  {name:'Facebook', ua:'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'},
+  {name:'Twitter', ua:'Twitterbot/1.0'},
+  {name:'LinkedIn', ua:'LinkedInBot/1.0 (compatible; Mozilla/5.0; +http://www.linkedin.com)'}
+];
+
+const BROWSER_DISPLAY = {chrome:'Chrome',edge:'Microsoft Edge',firefox:'Firefox',brave:'Brave',safari:'Safari',opera:'Opera',samsung:'Samsung Internet',uc:'UC Browser',yandex:'Yandex',unknown:'Unknown'};
+const PLATFORM_DISPLAY = {windows:'Windows',mac:'macOS',linux:'Linux',android:'Android',ios:'iOS',bot:'Bot Crawler'};
+
+function uaVersion(){return randInt(105,130)+'.0.'+randInt(0,9)+'.'+randInt(0,99)}
+function uaAndroid(){return randInt(9,14)+'.'+randInt(0,9)}
+function uaIos(){return randInt(14,17)+'_'+randInt(0,3)}
+function uaDevice(){return rnd(ANDROID_DEVICES)}
+
+function generateUA(platform, browser){
+  if(platform === 'bot'){
+    const bot = rnd(BOT_USER_AGENTS);
+    return {ua: bot.ua, browser: bot.name, platform: 'Bot'};
+  }
+  const actualPlatform = platform === 'mixed' ? rnd(['windows','mac','linux','android','ios']) : platform;
+  let template = UA_TEMPLATES[browser] && UA_TEMPLATES[browser][actualPlatform];
+  if(!template){
+    template = UA_TEMPLATES.unknown && UA_TEMPLATES.unknown[actualPlatform];
+    if(!template){
+      template = UA_TEMPLATES.chrome.windows;
+    }
+  }
+  const ua = template
+    .replace(/{ver}/g, uaVersion())
+    .replace(/{androidVer}/g, uaAndroid())
+    .replace(/{iosVer}/g, uaIos())
+    .replace(/{device}/g, uaDevice());
+  return {ua, browser: BROWSER_DISPLAY[browser] || browser, platform: PLATFORM_DISPLAY[actualPlatform] || actualPlatform};
+}
+
+function renderUACards(){
+  const listEl = $('#ua-results');
+  if(!listEl) return;
+  const items = state.uaagent.results;
+  if(!items.length){
+    listEl.className = 'results-list';
+    listEl.innerHTML = '<div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO USER AGENTS YET<br><span>Configure &amp; generate</span></div></div>';
+    return;
+  }
+  listEl.className = 'results-list ua-results-grid';
+  listEl.innerHTML = '';
+  items.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'ua-card';
+    card.dataset.id = item.id;
+    const browserPrimary = item.browser !== 'Unknown' ? 'primary glow' : '';
+    const platformPrimary = item.platform === 'Bot Crawler' ? 'primary glow' : '';
+    let ipHtml = '';
+    if(item.ip){
+      ipHtml = '<div class="ua-card-ip">'+escapeHtml(item.ip)+'</div>';
+    }
+    card.innerHTML =
+      '<div class="ua-card-head"><div class="ua-card-head-left"><div class="ua-card-icon"></div><span class="ua-card-label">User Agent</span></div><span class="ua-card-num">#'+String(idx+1).padStart(3,'0')+'</span></div>'+
+      '<div class="ua-card-body"><div class="ua-card-tags"><span class="ua-tag '+browserPrimary+'">'+escapeHtml(item.browser)+'</span><span class="ua-tag '+platformPrimary+'">'+escapeHtml(item.platform)+'</span></div>'+
+      '<div class="ua-card-ua">'+escapeHtml(item.value)+'</div>'+ipHtml+'</div>'+
+      '<div class="ua-card-foot"><span class="ua-card-id">'+escapeHtml(item.id.substring(0,20))+'…</span><button class="copy-btn" data-copy="'+escapeHtml(item.value)+'">COPY</button></div>';
+    listEl.appendChild(card);
+  });
+}
+
+$('#ua-generate').addEventListener('click', () => {
+  try{
+    const platformSel = $('#ua-platform').value;
+    const browserSel = $('#ua-browser').value;
+    const ipEnabled = $('[data-ua-ip-toggle]').classList.contains('active');
+    const ipType = $('#ua-ip-type').value;
+    const amount = Math.max(1, parseInt($('#ua-amount').value) || 1);
+    state.uaagent.results = [];
+    for(let i = 0; i < amount; i++){
+      const result = generateUA(platformSel, browserSel);
+      const ip = ipEnabled ? generateIP(ipType) : '';
+      state.uaagent.results.push({
+        id: 'ua_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,8),
+        value: result.ua,
+        status: 'final',
+        browser: result.browser,
+        platform: result.platform,
+        ip: ip
+      });
+    }
+    renderUACards();
+    updateCounts();
+    showToast('✓ GENERATED '+amount+' USER AGENTS', 'success');
+  }catch(err){
+    console.error('UA generate error:', err);
+    showToast('⚠ ERROR: '+err.message, 'error');
+  }
+});
+
+$('[data-ua-ip-toggle]').addEventListener('click', function(){
+  this.classList.toggle('active');
+  $('#ua-ip-type-section').style.display = this.classList.contains('active') ? '' : 'none';
+});
+
+$$('[data-ua-view]').forEach(b => b.addEventListener('click', () => {
+  $$('[data-ua-view]').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  state.uaagent.view = b.dataset.uaView;
+  if(state.uaagent.view === 'cards') renderUACards();
+  else renderResults('uaagent');
+  saveState();
+}));
+
+$('[data-ua-action="copy"]').addEventListener('click', () => copyAll('uaagent'));
+$('[data-ua-action="save"]').addEventListener('click', () => saveAsTxt('uaagent'));
+$('[data-ua-action="clear"]').addEventListener('click', () => clearResults('uaagent'));
+
+/* ════════ API GENERATOR ════════ */
+const API_TEMPLATES = {
+  stripe:       () => ({value:'sk_live_'+randomString(CHARS.alnum,32), service:'Stripe', format:'sk_live_*{32}'}),
+  openai:       () => ({value:'sk-'+randomString(CHARS.alnum,48), service:'OpenAI', format:'sk-*{48}'}),
+  github:       () => ({value:'ghp_'+randomString(CHARS.alnum,36), service:'GitHub', format:'ghp_*{36}'}),
+  aws:          () => ({value:'AKIA'+randomString(CHARS.upper+CHARS.num,16), service:'AWS Access Key', format:'AKIA*{16}'}),
+  google:       () => ({value:'AIza'+randomString(CHARS.alnum+'_-',35), service:'Google API', format:'AIza*{35}'}),
+  slack:        () => ({value:'xoxb-'+randInt(1000000000,9999999999)+'-'+randInt(1000000000,9999999999)+'-'+randomString(CHARS.alnum,24), service:'Slack Token', format:'xoxb-*{10}-{10}-{24}'}),
+  discord:      () => {const seg = () => randomString(CHARS.alnum+'_-.',6); return {value:randomString(CHARS.alnum,24)+'.'+seg()+'.'+seg()+'.'+seg(), service:'Discord Bot', format:'*.{6}.{6}.{6}'};},
+  shopify:      () => ({value:'shpat_'+randomString(CHARS.alnum,32), service:'Shopify', format:'shpat_*{32}'}),
+  twilio:       () => ({value:'SK'+randomString(CHARS.alnum,32), service:'Twilio', format:'SK*{32}'}),
+  mailgun:      () => ({value:'key-'+randomString(CHARS.alnum,32), service:'Mailgun', format:'key-*{32}'}),
+  sendgrid:     () => ({value:'SG.'+randomString(CHARS.alnum+'_-.',22), service:'SendGrid', format:'SG.*{22}'}),
+  digitalocean: () => ({value:'dop_v1_'+randomString(CHARS.alnum,64), service:'DigitalOcean', format:'dop_v1_*{64}'}),
+  heroku:       () => ({value:randomString(CHARS.alnum+'-_',36), service:'Heroku', format:'*{36}'}),
+  mapbox:       () => ({value:'pk.'+randomString(CHARS.alnum+'.',60), service:'Mapbox', format:'pk.*{60}'}),
+  cloudflare:   () => ({value:randomString(CHARS.alnum+'_-',40), service:'Cloudflare', format:'cf-*{40}'}),
+  firebase:     () => ({value:'AIzaSy'+randomString(CHARS.alnum+'_-',34), service:'Firebase', format:'AIzaSy*{34}'}),
+  paypal:       () => ({value:'access_token$'+randomString(CHARS.alnum+'-_',80), service:'PayPal', format:'access_token$*{80}'}),
+  square:       () => ({value:'sq0atp-'+randomString(CHARS.alnum+'_-',22), service:'Square', format:'sq0atp-*{22}'}),
+  razorpay:     () => ({value:'rzp_test_'+randomString(CHARS.alnum,14), service:'Razorpay', format:'rzp_test_*{14}'}),
+  telegram:     () => ({value:randInt(100000000,999999999)+':'+randomString(CHARS.alnum+'_-',35), service:'Telegram Bot', format:'{bot_id}:{35}'})
+};
+
+const CATEGORY_LABELS = { ai:'AI API', cloud:'Cloud Services', database:'Database', auth:'Authentication', payment:'Payment', communication:'Communication' };
+
+function generateAPIKey(type){
+  if(API_TEMPLATES[type]){
+    const t = API_TEMPLATES[type]();
+    return t;
+  }
+  return {value:randomString(CHARS.alnum,32), service:type, format:'*{32}'};
+}
+
+let apiLinkApproved = false;
+
+function renderAPICards(){
+  const listEl = $('#api-results');
+  if(!listEl) return;
+  const items = state.api.results;
+  if(!items.length){
+    listEl.className = 'results-list';
+    listEl.innerHTML = '<div class="empty"><div class="empty-icon">[ ]</div><div class="empty-text">NO API KEYS YET<br><span>Configure &amp; generate</span></div></div>';
+    return;
+  }
+  listEl.className = 'results-list ua-results-grid';
+  listEl.innerHTML = '';
+  items.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'ua-card ' + item.status;
+    card.dataset.id = item.id;
+
+    let statusHtml = '';
+    if(item.status === 'checking') statusHtml = '<div class="ua-card-status checking">⌛ CHECKING…</div>';
+    else if(item.status === 'valid') statusHtml = '<div class="ua-card-status valid">✓ VALID</div>';
+    else if(item.status === 'invalid') statusHtml = '<div class="ua-card-status invalid">✗ INVALID</div>';
+
+    const catPrimary = (item.category && item.category !== 'Custom') ? 'primary glow' : '';
+    card.innerHTML =
+      '<div class="ua-card-head"><div class="ua-card-head-left"><div class="ua-card-icon"></div><span class="ua-card-label">'+escapeHtml(item.service)+'</span></div><span class="ua-card-num">#'+String(idx+1).padStart(3,'0')+'</span></div>'+
+      '<div class="ua-card-body"><div class="ua-card-tags"><span class="ua-tag '+catPrimary+'">'+escapeHtml(item.category||'API')+'</span><span class="ua-tag">'+escapeHtml(item.format)+'</span></div>'+
+      '<div class="ua-card-ua">'+escapeHtml(item.value)+'</div>'+statusHtml+'</div>'+
+      '<div class="ua-card-foot"><span class="ua-card-id">'+escapeHtml(item.id.substring(0,20))+'…</span><button class="copy-btn" data-copy="'+escapeHtml(item.value)+'">COPY</button></div>';
+    listEl.appendChild(card);
+  });
+}
+
+$('#api-type').addEventListener('change', e => {
+  const isCustom = e.target.value === 'custom';
+  $('#api-custom-section').style.display = isCustom ? '' : 'none';
+  if(!isCustom){
+    apiLinkApproved = false;
+    $('#api-link-status').classList.remove('show','checking','approved');
+    $('#api-link-check').disabled = false;
+    $('#api-link-check').textContent = '▸ CHECK LINK';
+  }
+});
+
+$('#api-link-check').addEventListener('click', async () => {
+  try{
+    const link = $('#api-link').value.trim();
+    if(!link) return showToast('⚠ ENTER A LINK','error');
+    if(!/^https?:\/\//i.test(link)) return showToast('⚠ INVALID URL','error');
+    apiLinkApproved = false;
+    const status = $('#api-link-status');
+    const msg = $('#api-link-msg');
+    status.className = 'link-status show checking';
+    msg.textContent = 'Analyzing link…';
+    $('#api-link-check').disabled = true;
+    $('#api-link-check').textContent = 'CHECKING…';
+    const delay = randInt(7000,10000);
+    const stages = [
+      {m:'Resolving DNS…'},
+      {m:'Probing endpoint…'},
+      {m:'Validating API access…'},
+      {m:'Checking permissions…'},
+      {m:'Link approved ✓'}
+    ];
+    for(let i = 0; i < stages.length; i++){
+      const stage = stages[i];
+      const portion = (i === stages.length-1) ? delay*0.2 : delay/stages.length;
+      await sleep(portion);
+      msg.textContent = stage.m;
+      if(stage.m === 'Link approved ✓'){
+        status.className = 'link-status show approved';
+        apiLinkApproved = true;
+        state.api.linkApproved = true;
+        saveState();
+        showToast('✓ LINK APPROVED','success');
+        $('#api-link-check').textContent = '✓ APPROVED';
+        return;
+      }
+    }
+  }catch(err){
+    console.error('API link check error:', err);
+    showToast('⚠ ERROR: '+err.message, 'error');
+  }
+});
+
+$('#api-generate').addEventListener('click', async () => {
+  try{
+    const type = $('#api-type').value;
+    const category = $('#api-category').value;
+    const amount = Math.max(1, parseInt($('#api-amount').value) || 1);
+    if(type === 'custom' && !apiLinkApproved) return showToast('⚠ CHECK LINK FIRST','error');
+
+    state.api.results = [];
+    for(let i = 0; i < amount; i++){
+      let result;
+      if(type === 'custom'){
+        const prefix = $('#api-prefix').value || '';
+        const suffix = $('#api-suffix').value || '';
+        const charset = $('#api-charset').value || CHARS.alnum;
+        const length = randInt(24,48);
+        result = {
+          value: prefix + randomString(charset, length) + suffix,
+          service: 'Custom',
+          format: prefix + '*' + suffix
+        };
+      } else {
+        result = generateAPIKey(type);
+      }
+      result.category = CATEGORY_LABELS[category] || 'API';
+      state.api.results.push({
+        id: 'api_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,8),
+        value: result.value,
+        status: 'checking',
+        service: result.service,
+        category: result.category,
+        format: result.format
+      });
+    }
+    renderAPICards();
+    updateCounts();
+    await checkAllItems('api');
+    showToast('✓ GENERATED '+amount+' API KEYS','success');
+  }catch(err){
+    console.error('API generate error:', err);
+    showToast('⚠ ERROR: '+err.message, 'error');
+  }
+});
+
+$$('[data-api-view]').forEach(b => b.addEventListener('click', () => {
+  $$('[data-api-view]').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  state.api.view = b.dataset.apiView;
+  if(state.api.view === 'cards') renderAPICards();
+  else renderResults('api');
+  saveState();
+}));
+
+$('[data-api-action="copy"]').addEventListener('click', () => copyAll('api'));
+$('[data-api-action="save"]').addEventListener('click', () => saveAsTxt('api'));
+$('[data-api-action="clear"]').addEventListener('click', () => clearResults('api'));
+
+/* ════════ KEY BYPASSER ════════ */
+const keyToggles = {lowercase:true, uppercase:false, numbers:false, custom:false};
+const keyState = {linkApproved: false};
+$('#key-length').addEventListener('input', e => {$('#key-length-val').textContent = e.target.value; updateKeyPreview();});
+function updateKeyPreview(){
+  const pattern = $('#key-pattern').value || '####-####-####-####';
+  const charset = getKeyCharset();
+  const prev = $('#key-preview');
+  if(!charset){prev.textContent='— select characters —';prev.style.opacity='.4';return;}
+  prev.style.opacity='1';
+  const prefix = $('#key-prefix').value || '';
+  const suffix = $('#key-suffix').value || '';
+  prev.textContent = prefix + genFromPattern(pattern, charset) + suffix;
+}
+function getKeyCharset(){
+  if(keyToggles.custom) return $('#key-custom').value || '';
+  let c='';
+  if(keyToggles.lowercase) c+=CHARS.lower;
+  if(keyToggles.uppercase) c+=CHARS.upper;
+  if(keyToggles.numbers) c+=CHARS.num;
+  return c;
+}
+$$('[data-key-toggle]').forEach(t => t.addEventListener('click', () => {
+  const wasActive = t.classList.contains('active');
+  if(t.dataset.keyToggle === 'custom'){
+    if(!wasActive){
+      $$('[data-key-toggle]').forEach(o => o.classList.remove('active'));
+      keyToggles.lowercase = keyToggles.uppercase = keyToggles.numbers = keyToggles.custom = false;
+      t.classList.add('active'); keyToggles.custom = true;
+      $('#key-custom-wrap').style.display = 'block';
+    } else {t.classList.remove('active'); keyToggles.custom = false; $('#key-custom-wrap').style.display = 'none';}
+  } else {
+    if(keyToggles.custom){$$('[data-key-toggle="custom"]')[0].classList.remove('active');keyToggles.custom=false;$('#key-custom-wrap').style.display='none';}
+    t.classList.toggle('active');
+    keyToggles[t.dataset.keyToggle] = t.classList.contains('active');
+  }
+  updateKeyPreview();
+}));
+['key-custom','key-pattern','key-prefix','key-suffix'].forEach(id => $('#'+id).addEventListener('input', updateKeyPreview));
+$('#advanced-toggle').addEventListener('click', () => {$('#advanced-toggle').classList.toggle('open');$('#advanced-content').classList.toggle('open');});
+
+$('#key-check').addEventListener('click', async () => {
+  const link = $('#key-link').value.trim();
+  if(!link) return showToast('⚠ ENTER A LINK','error');
+  if(!/^https?:\/\//i.test(link)) return showToast('⚠ INVALID URL','error');
+  const status = $('#key-link-status');
+  const msg = $('#key-link-msg');
+  status.className = 'link-status show checking';
+  msg.textContent = 'Analyzing link...';
+  $('#key-check').disabled = true;
+  $('#key-check').textContent = 'CHECKING...';
+  const delay = randInt(5000,7000);
+  const stages = [{m:'Resolving DNS...'},{m:'Probing endpoint...'},{m:'Validating response...'},{m:'Bypassing verification...'},{m:'Link approved ✓'}];
+  for(let i=0;i<stages.length;i++){
+    const stage = stages[i];
+    const portion = (i === stages.length-1) ? delay*0.2 : delay/stages.length;
+    await sleep(portion);
+    msg.textContent = stage.m;
+    if(stage.m === 'Link approved ✓'){
+      status.className = 'link-status show approved';
+      keyState.linkApproved = true;
+      state.key.linkApproved = true;
+      state.key.linkApprovedLink = link;
+      $('#key-gen-section').style.opacity = '1';
+      $('#key-gen-section').style.pointerEvents = 'auto';
+      $('#key-check').textContent = '✓ APPROVED';
+      $('#key-check').disabled = true;
+      $('#key-link').disabled = true;
+      saveState();
+      showToast('✓ LINK APPROVED','success');
+      return;
+    }
+  }
+});
+
+$('#key-generate').addEventListener('click', async () => {
+  if(!keyState.linkApproved) return showToast('⚠ CHECK LINK FIRST','error');
+  const charset = getKeyCharset();
+  if(!charset) return showToast('⚠ SELECT CHARACTERS','error');
+  const pattern = $('#key-pattern').value || '####-####-####-####';
+  if(!pattern.includes('#')) return showToast('⚠ PATTERN NEEDS AT LEAST ONE #','error');
+  const amount = Math.max(1, parseInt($('#key-amount').value) || 1);
+  const prefix = $('#key-prefix').value || '';
+  const suffix = $('#key-suffix').value || '';
+  state.key.results = [];
+  renderResults('key'); updateCounts();
+  const items = Array.from({length:amount}, () => ({id:'k_'+Date.now()+'_'+Math.random().toString(36).slice(2,8), value:prefix+genFromPattern(pattern,charset)+suffix, status:'final'}));
+  const btn = $('#key-generate'); btn.disabled=true; btn.innerHTML='GENERATING...';
+  const speed = SPEEDS[settings.genSpeed].gen;
+  const listEl = getListEl('key');
+  const empty = listEl.querySelector('.empty');
+  if(empty) empty.remove();
+  for(const item of items){
+    state.key.results.push(item);
+    const el = createResultElement(item);
+    el.classList.remove('checking');
+    const dot = el.querySelector('.result-status');
+    dot.style.background = 'var(--red)';
+    dot.style.boxShadow = '0 0 4px var(--red)';
+    listEl.appendChild(el);
+    updateCounts();
+    saveStateDebounced();
+    if(speed > 0) await sleep(speed);
+  }
+  btn.disabled=false; btn.innerHTML='<span class="arrow">▸</span>GENERATE';
+  showToast(`✓ GENERATED ${amount} KEYS`,'success');
+});
+$$('[data-key-filter]').forEach(b => b.addEventListener('click', () => {$$('[data-key-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.key.filter=b.dataset.keyFilter;renderResults('key');}));
+$('[data-key-action="copy"]').addEventListener('click', () => copyAll('key'));
+$('[data-key-action="save"]').addEventListener('click', () => saveAsTxt('key'));
+$('[data-key-action="clear"]').addEventListener('click', () => clearResults('key'));
+
+document.addEventListener('click', e => {
+  if(e.target.matches('[data-copy]')){
+    const val = e.target.dataset.copy;
+    copyToClipboard(val);
+    e.target.classList.add('copied');
+    e.target.textContent = '✓';
+    setTimeout(() => {e.target.classList.remove('copied');e.target.textContent='COPY';}, 1200);
+  }
+});
+
+/* ════════ INIT ════════ */
+loadState();
+applyTheme();
+applyPrivacy();
+
+$('#theme-name').value = settings.theme.name;
+$('#theme-description').value = settings.theme.description;
+$('#theme-bg').value = settings.theme.bgColor;
+$('#theme-accent').value = settings.theme.accentColor;
+$('#valid-chance').value = settings.validChance;
+$('#valid-chance-val').textContent = settings.validChance + '%';
+$('#check-speed').value = settings.checkSpeed;
+$('#gen-speed').value = settings.genSpeed;
+$('[data-setting="scanlines"]').classList.toggle('active', settings.scanlines);
+if(!settings.scanlines) document.body.style.setProperty('--scanline-opacity','0');
+$('[data-setting="privacy-enabled"]').classList.toggle('active', settings.privacy.enabled);
+$('#blur-amount').value = settings.privacy.blurAmount;
+$('#blur-amount-val').textContent = settings.privacy.blurAmount + 'px';
+$$('[data-privacy-target]').forEach(t => {
+  const k = 'blur' + t.dataset.privacyTarget.charAt(0).toUpperCase() + t.dataset.privacyTarget.slice(1);
+  t.classList.toggle('active', settings.privacy[k]);
+});
+
+if(state.key.linkApproved){
+  keyState.linkApproved = true;
+  $('#key-link-status').className = 'link-status show approved';
+  $('#key-link-msg').textContent = 'Link approved ✓';
+  $('#key-gen-section').style.opacity = '1';
+  $('#key-gen-section').style.pointerEvents = 'auto';
+  $('#key-check').textContent = '✓ APPROVED';
+  $('#key-check').disabled = true;
+  if(state.key.linkApprovedLink) $('#key-link').value = state.key.linkApprovedLink;
+}
+
+rerenderAll();
+updateKeyPreview();
+
+// Sync UA view toggle UI
+if(state.uaagent.view){
+  $$('[data-ua-view]').forEach(b => b.classList.toggle('active', b.dataset.uaView === state.uaagent.view));
+}
+</script>
+</body>
+</html>
